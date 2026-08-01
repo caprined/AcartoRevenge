@@ -1,5 +1,5 @@
 import React from "react";
-import { View, ScrollView, StyleSheet } from "react-native";
+import { View, ScrollView, StyleSheet, Dimensions, Text } from "react-native";
 import { findByProps, findByStoreName } from "@vendetta/metro";
 import { GuildNode, useFolderExpanded } from "../utils/tree";
 import TopBarGuildItem from "./TopBarGuildItem";
@@ -41,7 +41,7 @@ function ExpandedFolderRow({ node }: { node: GuildNode }) {
     );
 }
 
-export default function HorizontalTopBar() {
+function HorizontalTopBarInner() {
     const nodes: GuildNode[] = Flux?.useStateFromStores?.(
         [SortedGuildStore],
         () => {
@@ -58,9 +58,13 @@ export default function HorizontalTopBar() {
     const folderNodes = nodes.filter((n) => n.type === "folder");
 
     return (
-        <View style={st.wrap} onLayout={(e) => {
-            console.log(TAG, "HorizontalTopBar rendered, measured size:", JSON.stringify(e.nativeEvent.layout));
-        }}>
+        <View
+            style={st.wrap}
+            onLayout={(e) => {
+                console.log(TAG, "HorizontalTopBar measured:", JSON.stringify(e.nativeEvent.layout));
+            }}
+        >
+            <Text style={st.debugLabel}>TopGuildBar DEBUG · {nodes.length} pozycji</Text>
             <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -80,13 +84,48 @@ export default function HorizontalTopBar() {
     );
 }
 
+// Error boundary klasowy — jeśli render wywali błąd, Discordowy ErrorBoundary
+// może go połknąć bez oznaczenia pluginu jako błędnego. Tu łapiemy to sami
+// i pokazujemy widoczny na ekranie komunikat zamiast ciszy.
+class HorizontalTopBar extends React.Component<{}, { error: string | null }> {
+    state = { error: null as string | null };
+    static getDerivedStateFromError(err: any) {
+        return { error: String(err?.message ?? err) };
+    }
+    componentDidCatch(err: any) {
+        console.log(TAG, "RENDER ERROR:", err);
+    }
+    render() {
+        if (this.state.error) {
+            return (
+                <View style={st.errorBox}>
+                    <Text style={st.errorText}>TopGuildBar crash: {this.state.error}</Text>
+                </View>
+            );
+        }
+        return <HorizontalTopBarInner />;
+    }
+}
+
+export default HorizontalTopBar;
+
 let __DEV_LOGGED__ = false;
+
+const { width: SCREEN_W } = Dimensions.get("window");
 
 const st = StyleSheet.create({
     wrap: {
-        width: "100%",
-        backgroundColor: "#1e1f22",
+        // Twarda, jawna szerokość/wysokość — nie ufamy rodzicowi, że da nam miejsce.
+        width: SCREEN_W,
+        minHeight: 64,
+        backgroundColor: "#ff00c8", // JASKRAWE tło tymczasowo — do usunięcia po potwierdzeniu że działa
         paddingTop: 6,
+    },
+    debugLabel: {
+        color: "#fff",
+        fontSize: 10,
+        paddingHorizontal: 8,
+        marginBottom: 2,
     },
     rowContent: {
         paddingHorizontal: 8,
@@ -96,5 +135,15 @@ const st = StyleSheet.create({
         borderTopWidth: StyleSheet.hairlineWidth,
         borderTopColor: "#2b2d31",
         paddingVertical: 6,
+    },
+    errorBox: {
+        width: SCREEN_W,
+        minHeight: 40,
+        backgroundColor: "#ed4245",
+        padding: 8,
+    },
+    errorText: {
+        color: "#fff",
+        fontSize: 11,
     },
 });
