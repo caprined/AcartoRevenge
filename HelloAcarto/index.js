@@ -1,0 +1,1 @@
+(function(e,t,n){"use strict";var a={onLoad:function(){t.showToast("AcartoRevenge dzia\u0142a! \u{1F389}",n.getAssetIDByName("ic_information_24px"))},onUnload:function(){}};return e.default=a,Object.defineProperty(e,"__esModule",{value:!0}),e})({},vendetta.ui.toasts,vendetta.ui.assets);
