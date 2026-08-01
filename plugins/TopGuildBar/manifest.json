@@ -1,0 +1,14 @@
+{
+  "name": "TopGuildBar",
+  "description": "Przenosi pasek serwerów z lewej strony na górę ekranu, foldery rozwijają się w dół.",
+  "authors": [
+    {
+      "name": "caprined",
+      "id": "TWOJE_DISCORD_ID_TUTAJ"
+    }
+  ],
+  "main": "src/index.ts",
+  "vendetta": {
+    "icon": "ic_guild_24px"
+  }
+}
