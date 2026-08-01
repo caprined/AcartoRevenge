@@ -1,0 +1,14 @@
+{
+  "name": "HelloAcarto",
+  "description": "Prosty test-plugin, pokazuje toast po starcie Discorda.",
+  "authors": [
+    {
+      "name": "caprined",
+      "id": "TWOJE_DISCORD_ID_TUTAJ"
+    }
+  ],
+  "main": "src/index.ts",
+  "vendetta": {
+    "icon": "ic_information_24px"
+  }
+}

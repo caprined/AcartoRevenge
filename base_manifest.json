@@ -1,0 +1,12 @@
+{
+  "authors": [
+    {
+      "name": "caprined",
+      "id": "TWOJE_DISCORD_ID_TUTAJ"
+    }
+  ],
+  "main": "index.js",
+  "vendetta": {
+    "icon": "ic_information_24px"
+  }
+}
