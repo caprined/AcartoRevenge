@@ -134,7 +134,7 @@ class HorizontalTopBar extends React.Component<{}, { error: string | null }> {
         logError("RENDER ERROR:", err);
     }
     render() {
-        if (this.state.error) {
+        if (this.state?.error) {
             return (
                 <View style={st.errorBox}>
                     <Text style={st.errorText}>TopGuildBar crash: {this.state.error}</Text>
