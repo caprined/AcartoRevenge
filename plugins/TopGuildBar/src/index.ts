@@ -1,6 +1,6 @@
 import { patchCreateElement } from "./patches/createElementIntercept";
 import { patchGuildsBar } from "./patches/guildsBar";
-import { patchStatusIndicator } from "./patches/statusIndicator";
+import { patchLaunchPad } from "./patches/launchPad";
 import { probeLayoutContainers } from "./patches/discovery";
 import { showToast } from "@vendetta/ui/toasts";
 import { getAssetIDByName } from "@vendetta/ui/assets";
@@ -28,9 +28,9 @@ export default {
 
         let showedNew = false;
         try {
-            showedNew = patchStatusIndicator(cleanups);
+            showedNew = patchLaunchPad(cleanups);
         } catch (e) {
-            logError("patchStatusIndicator() wywalił się (górny poziom):", e);
+            logError("patchLaunchPad() wywalił się (górny poziom):", e);
         }
 
         const ok = hidOld && showedNew;
