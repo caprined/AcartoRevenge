@@ -156,7 +156,7 @@ const st = StyleSheet.create({
     wrap: {
         width: "100%",
         minHeight: 64,
-        backgroundColor: "#ff00c8", // JASKRAWE tło tymczasowo — do usunięcia po potwierdzeniu że działa
+        backgroundColor: "#1e1f22",
         paddingTop: 6,
     },
     debugLabel: {

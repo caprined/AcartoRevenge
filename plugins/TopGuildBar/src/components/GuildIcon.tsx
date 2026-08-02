@@ -1,19 +1,32 @@
 import React from "react";
 import { View, Text, Image, StyleSheet } from "react-native";
 import { findByStoreName, findByProps } from "@vendetta/metro";
+import { warn } from "../utils/logger";
 
 const GuildStore = findByStoreName("GuildStore");
 const colors = findByProps("colors", "unsafe_rawColors")?.colors;
 
-export default function GuildIcon({ id, size = 44 }: { id: string; size?: number }) {
-    const g = GuildStore?.getGuild(id);
-    if (!g) return null;
+const alreadyWarned = new Set<string>();
+
+export default function GuildIcon({ id, size = 44 }: { id: string | number; size?: number }) {
+    const idStr = String(id);
+    const g = GuildStore?.getGuild?.(idStr);
+
+    if (!g) {
+        if (!alreadyWarned.has(idStr)) {
+            alreadyWarned.add(idStr);
+            warn(`GuildIcon: brak danych w GuildStore dla id=${idStr} (typ oryginalny: ${typeof id})`);
+        }
+        return null;
+    }
+
     const rad = size >= 40 ? 14 : 8;
     if (g.icon) {
         return (
             <Image
                 source={{ uri: `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=${size * 2}` }}
                 style={{ width: size, height: size, borderRadius: rad }}
+                onError={(e) => warn(`GuildIcon: błąd ładowania obrazka dla ${g.name}:`, e.nativeEvent?.error)}
             />
         );
     }
