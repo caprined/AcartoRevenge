@@ -1,6 +1,5 @@
 import React from "react";
 import { find, findByName } from "@vendetta/metro";
-import { registerIntercept } from "./createElementIntercept";
 import HorizontalTopBar from "../components/HorizontalTopBar";
 import { log, warn, error as logError } from "../utils/logger";
 
@@ -30,9 +29,11 @@ function findGuildsBarModule(): any {
 }
 
 /**
- * Zamienia GuildsBar (pionowy pasek) na nasz poziomy HorizontalTopBar.
- * Całość owinięta w try/catch — jeśli coś tu wybuchnie, plugin ma zostać
- * przy DOMYŚLNYM pasku zamiast zawiesić cały onLoad w połowie roboty.
+ * Jedyne miejsce, które w praktyce niezawodnie się przemontowuje (przy
+ * zmianie serwera) — więc tu renderujemy nasz pasek. Bez Modal (blokował
+ * dotyk na Androidzie), bez wymuszania pełnej szerokości (rodzic i tak
+ * przycina do swojej naturalnej, wąskiej szerokości — nie da się tego
+ * ominąć bez patcha rodzica, którego nie znaleźliśmy bez devtoolsów).
  */
 export function patchGuildsBar(cleanups: (() => void)[]): boolean {
     try {
@@ -43,15 +44,14 @@ export function patchGuildsBar(cleanups: (() => void)[]): boolean {
         }
         const orig = mod.default;
 
-        // Chowamy stary pionowy pasek — nasz nowy pasek renderuje się teraz
-        // gdzie indziej (GlobalStatusIndicator), żeby uniknąć Modal/klipowania.
-        mod.default = function HiddenGuildsBar() {
-            return null;
+        mod.default = function TopGuildBarPatch() {
+            log("TopGuildBarPatch() wywołany");
+            return React.createElement(HorizontalTopBar);
         };
         mod.default.displayName = "GuildsBar";
 
         cleanups.push(() => { mod.default = orig; });
-        log("PATCH: GuildsBar ukryty (renderuje null)");
+        log("PATCH: GuildsBar zastąpiony przez HorizontalTopBar");
         return true;
     } catch (e) {
         logError("patchGuildsBar() wywalił się:", e);

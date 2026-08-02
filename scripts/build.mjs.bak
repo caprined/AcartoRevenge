@@ -3,7 +3,7 @@ import nodeResolve from "@rollup/plugin-node-resolve";
 import { createHash } from "crypto";
 import { readFile, readdir, writeFile, stat, mkdir } from "fs/promises";
 import { argv } from "process";
-import { rollup, watch } from "rollup"; 
+import { rollup, watch } from "rollup";
 
 import swc from "@swc/core";
 import esbuild from "rollup-plugin-esbuild";

@@ -1,5 +1,5 @@
 import React from "react";
-import { View, ScrollView, StyleSheet, Text, Modal, Platform, StatusBar } from "react-native";
+import { View, ScrollView, StyleSheet, Text, Platform, StatusBar } from "react-native";
 import { findByProps, findByStoreName } from "@vendetta/metro";
 import { GuildNode, useFolderExpanded } from "../utils/tree";
 import { log, warn, error as logError } from "../utils/logger";
@@ -58,13 +58,13 @@ function HorizontalTopBarInner() {
 
     return (
         <View
-            style={[st.wrap, { paddingTop: safeStatusBarHeight() + 6 }]}
+            style={st.wrap}
             pointerEvents="auto"
             onLayout={(e) => {
                 log("HorizontalTopBar measured:", JSON.stringify(e.nativeEvent.layout));
             }}
         >
-            <Text style={st.debugLabel}>TopGuildBar DEBUG · {nodes.length} pozycji</Text>
+            <Text style={st.debugLabel}>{nodes.length} poz.</Text>
             <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -132,10 +132,10 @@ const st = StyleSheet.create({
         flex: 1,
     },
     wrap: {
-        width: "100%",
+        minWidth: 60,
         minHeight: 64,
         backgroundColor: "#1e1f22",
-        paddingTop: 6,
+        paddingTop: 4,
     },
     debugLabel: {
         color: "#fff",
