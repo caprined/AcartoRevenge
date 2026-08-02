@@ -1,5 +1,6 @@
 import { patchCreateElement } from "./patches/createElementIntercept";
 import { patchGuildsBar } from "./patches/guildsBar";
+import { patchStatusIndicator } from "./patches/statusIndicator";
 import { probeLayoutContainers } from "./patches/discovery";
 import { showToast } from "@vendetta/ui/toasts";
 import { getAssetIDByName } from "@vendetta/ui/assets";
@@ -18,12 +19,21 @@ export default {
             logError("patchCreateElement() wywalił się:", e);
         }
 
-        let ok = false;
+        let hidOld = false;
         try {
-            ok = patchGuildsBar(cleanups);
+            hidOld = patchGuildsBar(cleanups);
         } catch (e) {
             logError("patchGuildsBar() wywalił się (górny poziom):", e);
         }
+
+        let showedNew = false;
+        try {
+            showedNew = patchStatusIndicator(cleanups);
+        } catch (e) {
+            logError("patchStatusIndicator() wywalił się (górny poziom):", e);
+        }
+
+        const ok = hidOld && showedNew;
 
         try {
             if (!ok) {
@@ -47,7 +57,7 @@ export default {
             logError("probeLayoutContainers() wywalił się:", e);
         }
 
-        log("onLoad done, ok =", ok);
+        log("onLoad done, hidOld =", hidOld, "showedNew =", showedNew);
     },
     onUnload() {
         log("onUnload");

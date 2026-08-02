@@ -56,7 +56,7 @@ function HorizontalTopBarInner() {
 
     const folderNodes = nodes.filter((n) => n.type === "folder");
 
-    const barContent = (
+    return (
         <View
             style={[st.wrap, { paddingTop: safeStatusBarHeight() + 6 }]}
             pointerEvents="auto"
@@ -81,28 +81,6 @@ function HorizontalTopBarInner() {
                 <ExpandedFolderRow key={`exp-${node.id}`} node={node} />
             ))}
         </View>
-    );
-
-    // Modal = natywny portal ponad całą appką, omija overflow:hidden rodzica.
-    // Jeśli z jakiegoś powodu Modal nie istnieje w tym buildzie, wracamy do
-    // zwykłego renderu w miejscu (gorzej wygląda, ale się nie wywala).
-    if (typeof Modal !== "function") {
-        warn("Modal niedostępny w tym środowisku — render fallback w oryginalnym slocie");
-        return barContent;
-    }
-
-    return (
-        <Modal
-            transparent
-            visible
-            animationType="none"
-            statusBarTranslucent
-            onRequestClose={() => {}}
-        >
-            <View style={st.modalRoot} pointerEvents="box-none">
-                {barContent}
-            </View>
-        </Modal>
     );
 }
 

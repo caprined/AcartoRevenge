@@ -43,16 +43,15 @@ export function patchGuildsBar(cleanups: (() => void)[]): boolean {
         }
         const orig = mod.default;
 
-        registerIntercept(orig, HorizontalTopBar);
-
-        mod.default = function TopGuildBarPatch() {
-            log("TopGuildBarPatch() wywołany — React faktycznie odpala nasz zamiennik");
-            return React.createElement(HorizontalTopBar);
+        // Chowamy stary pionowy pasek — nasz nowy pasek renderuje się teraz
+        // gdzie indziej (GlobalStatusIndicator), żeby uniknąć Modal/klipowania.
+        mod.default = function HiddenGuildsBar() {
+            return null;
         };
         mod.default.displayName = "GuildsBar";
 
         cleanups.push(() => { mod.default = orig; });
-        log("PATCH: GuildsBar zastąpiony przez HorizontalTopBar");
+        log("PATCH: GuildsBar ukryty (renderuje null)");
         return true;
     } catch (e) {
         logError("patchGuildsBar() wywalił się:", e);
