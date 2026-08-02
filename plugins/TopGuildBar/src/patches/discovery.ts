@@ -1,6 +1,7 @@
+import { log } from "../utils/logger";
 import { find, findByProps, findByStoreName } from "@vendetta/metro";
 
-const TAG = "[TopGuildBar]";
+
 
 /**
  * Znajduje moduł renderujący pionowy pasek serwerów (GuildsBar).
@@ -30,7 +31,7 @@ export function findGuildsBarModule(): any {
 export function probeLayoutContainers() {
     try {
         const candidates = findByProps("AppContainer") ?? null;
-        console.log(TAG, "PROBE AppContainer:", !!candidates);
+        log("PROBE AppContainer:", !!candidates);
 
         // Szukamy komponentów, których nazwa sugeruje układ główny appki
         const nameHints = ["AppView", "Chrome", "MainTabsView", "RootView", "AppContent"];
@@ -42,10 +43,10 @@ export function probeLayoutContainers() {
                     return false;
                 }
             });
-            console.log(TAG, `PROBE candidate "${hint}":`, !!mod);
+            log(`PROBE candidate "${hint}":`, !!mod);
         }
     } catch (e) {
-        console.log(TAG, "PROBE error:", e);
+        log("PROBE error:", e);
     }
 }
 
@@ -60,9 +61,9 @@ export function getSortedGuildStore(): any {
         null;
 
     if (!store) {
-        console.log(TAG, "WARN: nie znaleziono store z listą serwerów/folderów");
+        log("WARN: nie znaleziono store z listą serwerów/folderów");
     } else {
-        console.log(TAG, "OK: znaleziono store", Object.keys(store));
+        log("OK: znaleziono store", Object.keys(store));
     }
     return store;
 }

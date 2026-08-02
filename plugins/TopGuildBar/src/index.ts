@@ -3,39 +3,58 @@ import { patchGuildsBar } from "./patches/guildsBar";
 import { probeLayoutContainers } from "./patches/discovery";
 import { showToast } from "@vendetta/ui/toasts";
 import { getAssetIDByName } from "@vendetta/ui/assets";
+import { log, warn, error as logError } from "./utils/logger";
+import LogsScreen from "./components/LogsScreen";
 
-const TAG = "[TopGuildBar]";
 const cleanups: (() => void)[] = [];
 
 export default {
     onLoad() {
-        console.log(TAG, "onLoad start");
+        log("onLoad start");
 
-        patchCreateElement(cleanups);
-
-        const ok = patchGuildsBar(cleanups);
-
-        if (!ok) {
-            showToast(
-                "TopGuildBar: nie znalazłem GuildsBar, sprawdź konsolę Revenge",
-                getAssetIDByName("ic_warning_24px"),
-            );
-        } else {
-            showToast(
-                "TopGuildBar załadowany — jeśli layout wygląda źle, wyślij mi logi",
-                getAssetIDByName("ic_information_24px"),
-            );
+        try {
+            patchCreateElement(cleanups);
+        } catch (e) {
+            logError("patchCreateElement() wywalił się:", e);
         }
 
-        // Diagnostyka do etapu 2 (usuwanie lewego offsetu) — nie patchuje niczego,
-        // tylko loguje potencjalnych kandydatów na kontener layoutu.
-        probeLayoutContainers();
+        let ok = false;
+        try {
+            ok = patchGuildsBar(cleanups);
+        } catch (e) {
+            logError("patchGuildsBar() wywalił się (górny poziom):", e);
+        }
 
-        console.log(TAG, "onLoad done");
+        try {
+            if (!ok) {
+                showToast(
+                    "TopGuildBar: problem przy starcie, zobacz Configure",
+                    getAssetIDByName("ic_warning_24px"),
+                );
+            } else {
+                showToast(
+                    "TopGuildBar załadowany — sprawdź Configure jeśli coś nie gra",
+                    getAssetIDByName("ic_information_24px"),
+                );
+            }
+        } catch (e) {
+            logError("showToast() wywalił się:", e);
+        }
+
+        try {
+            probeLayoutContainers();
+        } catch (e) {
+            logError("probeLayoutContainers() wywalił się:", e);
+        }
+
+        log("onLoad done, ok =", ok);
     },
     onUnload() {
-        console.log(TAG, "onUnload");
-        for (const fn of cleanups) fn();
+        log("onUnload");
+        for (const fn of cleanups) {
+            try { fn(); } catch (e) { logError("cleanup() wywalił się:", e); }
+        }
         cleanups.length = 0;
     },
+    settings: LogsScreen,
 };

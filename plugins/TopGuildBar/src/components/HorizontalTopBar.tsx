@@ -1,11 +1,10 @@
 import React from "react";
-import { View, ScrollView, StyleSheet, Dimensions, Text } from "react-native";
+import { View, ScrollView, StyleSheet, Text, Modal, Platform, StatusBar } from "react-native";
 import { findByProps, findByStoreName } from "@vendetta/metro";
 import { GuildNode, useFolderExpanded } from "../utils/tree";
+import { log, warn, error as logError } from "../utils/logger";
 import TopBarGuildItem from "./TopBarGuildItem";
 import TopBarFolderItem from "./TopBarFolderItem";
-
-const TAG = "[TopGuildBar]";
 
 const Flux = findByProps("useStateFromStores");
 const SortedGuildStore = findByStoreName("SortedGuildStore");
@@ -49,7 +48,7 @@ function HorizontalTopBarInner() {
             const children = t?.root?.children || [];
             if (__DEV_LOGGED__ === false) {
                 __DEV_LOGGED__ = true;
-                console.log(TAG, "getGuildsTree() sample node:", JSON.stringify(children[0])?.slice(0, 300));
+                log("getGuildsTree() sample node:", JSON.stringify(children[0])?.slice(0, 300));
             }
             return children.filter((n: GuildNode) => n.type !== "root");
         },
@@ -57,11 +56,12 @@ function HorizontalTopBarInner() {
 
     const folderNodes = nodes.filter((n) => n.type === "folder");
 
-    return (
+    const barContent = (
         <View
-            style={st.wrap}
+            style={[st.wrap, { paddingTop: safeStatusBarHeight() + 6 }]}
+            pointerEvents="auto"
             onLayout={(e) => {
-                console.log(TAG, "HorizontalTopBar measured:", JSON.stringify(e.nativeEvent.layout));
+                log("HorizontalTopBar measured:", JSON.stringify(e.nativeEvent.layout));
             }}
         >
             <Text style={st.debugLabel}>TopGuildBar DEBUG · {nodes.length} pozycji</Text>
@@ -82,6 +82,40 @@ function HorizontalTopBarInner() {
             ))}
         </View>
     );
+
+    // Modal = natywny portal ponad całą appką, omija overflow:hidden rodzica.
+    // Jeśli z jakiegoś powodu Modal nie istnieje w tym buildzie, wracamy do
+    // zwykłego renderu w miejscu (gorzej wygląda, ale się nie wywala).
+    if (typeof Modal !== "function") {
+        warn("Modal niedostępny w tym środowisku — render fallback w oryginalnym slocie");
+        return barContent;
+    }
+
+    return (
+        <Modal
+            transparent
+            visible
+            animationType="none"
+            statusBarTranslucent
+            onRequestClose={() => {}}
+        >
+            <View style={st.modalRoot} pointerEvents="box-none">
+                {barContent}
+            </View>
+        </Modal>
+    );
+}
+
+function safeStatusBarHeight(): number {
+    try {
+        if (Platform?.OS === "android") {
+            return StatusBar?.currentHeight ?? 24;
+        }
+        return 44;
+    } catch (e) {
+        warn("safeStatusBarHeight() fallback:", e);
+        return 24;
+    }
 }
 
 // Error boundary klasowy — jeśli render wywali błąd, Discordowy ErrorBoundary
@@ -93,7 +127,7 @@ class HorizontalTopBar extends React.Component<{}, { error: string | null }> {
         return { error: String(err?.message ?? err) };
     }
     componentDidCatch(err: any) {
-        console.log(TAG, "RENDER ERROR:", err);
+        logError("RENDER ERROR:", err);
     }
     render() {
         if (this.state.error) {
@@ -111,12 +145,12 @@ export default HorizontalTopBar;
 
 let __DEV_LOGGED__ = false;
 
-const { width: SCREEN_W } = Dimensions.get("window");
-
 const st = StyleSheet.create({
+    modalRoot: {
+        flex: 1,
+    },
     wrap: {
-        // Twarda, jawna szerokość/wysokość — nie ufamy rodzicowi, że da nam miejsce.
-        width: SCREEN_W,
+        width: "100%",
         minHeight: 64,
         backgroundColor: "#ff00c8", // JASKRAWE tło tymczasowo — do usunięcia po potwierdzeniu że działa
         paddingTop: 6,
@@ -137,7 +171,7 @@ const st = StyleSheet.create({
         paddingVertical: 6,
     },
     errorBox: {
-        width: SCREEN_W,
+        width: "100%",
         minHeight: 40,
         backgroundColor: "#ed4245",
         padding: 8,
