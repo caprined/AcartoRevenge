@@ -46,6 +46,7 @@ export function patchGuildsBar(cleanups: (() => void)[]): boolean {
         registerIntercept(orig, HorizontalTopBar);
 
         mod.default = function TopGuildBarPatch() {
+            log("TopGuildBarPatch() wywołany — React faktycznie odpala nasz zamiennik");
             return React.createElement(HorizontalTopBar);
         };
         mod.default.displayName = "GuildsBar";

@@ -122,7 +122,11 @@ function safeStatusBarHeight(): number {
 // może go połknąć bez oznaczenia pluginu jako błędnego. Tu łapiemy to sami
 // i pokazujemy widoczny na ekranie komunikat zamiast ciszy.
 class HorizontalTopBar extends React.Component<{}, { error: string | null }> {
-    state = { error: null as string | null };
+    constructor(props: {}) {
+        super(props);
+        this.state = { error: null };
+        log("HorizontalTopBar constructor() — komponent jest montowany");
+    }
     static getDerivedStateFromError(err: any) {
         return { error: String(err?.message ?? err) };
     }
