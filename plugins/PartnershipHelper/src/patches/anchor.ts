@@ -2,44 +2,54 @@ import React from "react";
 import { find, findByTypeName } from "@vendetta/metro";
 import PartnershipOverlay from "../components/PartnershipOverlay";
 
-function findGuildsBarMemo(): any {
-    try {
-        const mod = findByTypeName("GuildsBar");
-        if (mod && typeof mod === "object" && "type" in mod) return mod;
-    } catch (e) {
-        console.log("[PartnershipHelper] findByTypeName error:", e);
-    }
-    try {
-        return find((m) => {
-            try { return m?.type?.name === "GuildsBar" || m?.type?.displayName === "GuildsBar"; } catch { return false; }
-        });
-    } catch (e) {
-        console.log("[PartnershipHelper] find fallback error:", e);
+const CANDIDATES = ["LaunchPadContainer", "AccessibilityPreferencesContextProvider", "KeyCommandsView"];
+
+function findTargetMemo(): { memoObj: any; name: string } | null {
+    for (const name of CANDIDATES) {
+        try {
+            const mod = findByTypeName(name);
+            if (mod && typeof mod === "object" && "type" in mod) return { memoObj: mod, name };
+        } catch (e) {
+            console.log(`[PartnershipHelper] findByTypeName(${name}) error:`, e);
+        }
+        try {
+            const mod = find((m) => {
+                try { return m?.type?.name === name || m?.type?.displayName === name; } catch { return false; }
+            });
+            if (mod?.type) return { memoObj: mod, name };
+        } catch (e) {
+            console.log(`[PartnershipHelper] find(${name}) error:`, e);
+        }
     }
     return null;
 }
 
 /**
- * Dopisuje PartnershipOverlay obok normalnego GuildsBar (nie zastępuje go —
- * ten plugin ma współistnieć z domyślnym paskiem serwerów, ewentualnie
- * z naszym TopGuildBar). Renderuje oba przez React.Fragment.
+ * Zaczep na LaunchPadContainer — komponent blisko korzenia appki (opakowuje
+ * cały StackNavigator), NIE ma nic wspólnego z paskiem serwerów. Powinien
+ * być widoczny na KAŻDYM ekranie appki, nie tylko wewnątrz serwera.
+ *
+ * Patchujemy .type (nie .default) w miejscu, bo komponent jest prawdopodobnie
+ * opakowany w React.memo — dokładnie ta sama poprawka co zadziałała
+ * na GuildsBar dziś wieczorem przez żywe devtoolsy.
  */
 export function patchAnchor(cleanups: (() => void)[]): boolean {
     try {
-        const memoObj = findGuildsBarMemo();
-        if (!memoObj?.type) {
-            console.log("[PartnershipHelper] GuildsBar (memo) nie znaleziony");
+        const found = findTargetMemo();
+        if (!found) {
+            console.log("[PartnershipHelper] żaden z kandydatów nie znaleziony:", CANDIDATES.join(", "));
             return false;
         }
+        const { memoObj, name } = found;
         const origRender = memoObj.type;
 
-        memoObj.type = function GuildsBarWithOverlay(...args: any[]) {
+        memoObj.type = function PatchedWithOverlay(...args: any[]) {
             const original = origRender.apply(this, args);
             return React.createElement(React.Fragment, null, original, React.createElement(PartnershipOverlay));
         };
 
         cleanups.push(() => { memoObj.type = origRender; });
-        console.log("[PartnershipHelper] PATCH: overlay dopięty do GuildsBar");
+        console.log(`[PartnershipHelper] PATCH: overlay dopięty do ${name}`);
         return true;
     } catch (e) {
         console.log("[PartnershipHelper] patchAnchor() wywalił się:", e);
