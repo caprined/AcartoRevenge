@@ -1,0 +1,14 @@
+{
+  "name": "Partnership Helper",
+  "description": "Zbiera wzmianki userów z reklam partnerskich podczas scrollowania i pozwala łatwo do nich napisać.",
+  "authors": [
+    {
+      "name": "caprined",
+      "id": "TWOJE_DISCORD_ID_TUTAJ"
+    }
+  ],
+  "main": "src/index.tsx",
+  "vendetta": {
+    "icon": "ic_message_24px"
+  }
+}
