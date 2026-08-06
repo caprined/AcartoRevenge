@@ -1,75 +1,107 @@
-import React from "react";
-import { findByProps } from "@vendetta/metro";
-import { before, after } from "@vendetta/patcher";
+import { findByName, findByProps } from "@vendetta/metro";
+import { React } from "@vendetta/metro/common";
+import { after } from "@vendetta/patcher";
 import { getAssetIDByName } from "@vendetta/ui/assets";
-import { Forms } from "@vendetta/ui/components";
 import { findInReactTree } from "@vendetta/utils";
 import { showToast } from "@vendetta/ui/toasts";
 import { startRecording, stopRecording, isRecording } from "../utils/recorder";
 import { getReviews } from "../utils/store";
 import { openReadScreen } from "../utils/bus";
 
-const LazyActionSheet = findByProps("openLazy", "hideActionSheet");
-const ActionSheetRow = findByProps("ActionSheetRow")?.ActionSheetRow ?? Forms.FormRow;
+const MessageLongPressActionSheet = findByName("MessageLongPressActionSheet", false);
+const ActionSheetRow = findByProps("ActionSheetRow")?.ActionSheetRow;
+const ActionSheetRowGroup =
+    findByProps("ActionSheetRowGroup")?.ActionSheetRowGroup ?? (ActionSheetRow as any)?.Group;
+const ActionSheetRowIcon =
+    findByProps("ActionSheetRowIcon")?.ActionSheetRowIcon ?? (ActionSheetRow as any)?.Icon;
+
+function findActionGroups(tree: any) {
+    return findInReactTree(tree, (node: any) => node?.[0]?.type?.name === "ActionSheetRowGroup");
+}
+
+function findFlatButtons(tree: any) {
+    return findInReactTree(tree, (node: any) => node?.[0]?.type?.name === "ActionSheetRow");
+}
 
 export function patchMessageMenu(cleanups: (() => void)[]): boolean {
-    try {
-        if (!LazyActionSheet?.openLazy) {
-            console.log("[PartnershipHelper] LazyActionSheet nie znaleziony");
-            return false;
-        }
-
-        const unpatchOpen = before("openLazy", LazyActionSheet, ([component, key]: any[]) => {
-            if (key !== "MessageLongPressActionSheet" || !component?.then) return;
-
-            component.then((instance: any) => {
-                const unpatchInstance = after("default", instance, (_args: any, res: any) => {
-                    setTimeout(unpatchInstance, 0);
-
-                    const buttons = findInReactTree(res, (x: any) => x?.[0]?.type?.name === "ActionSheetRow");
-                    if (!buttons) return;
-
-                    const recording = isRecording();
-                    const reviewLabel = recording ? "Zakończ review" : "Rozpocznij review";
-                    const reviewIcon = recording ? "ic_close_circle_24px" : "ic_add_circle_24px";
-
-                    const handleToggleReview = () => {
-                        if (isRecording()) {
-                            stopRecording();
-                            showToast("Review zatrzymany", getAssetIDByName("ic_information_24px"));
-                        } else {
-                            startRecording();
-                            showToast("Review włączony — scrolluj kanał", getAssetIDByName("ic_information_24px"));
-                        }
-                        LazyActionSheet.hideActionSheet();
-                    };
-
-                    const handleOpenRead = () => {
-                        LazyActionSheet.hideActionSheet();
-                        setTimeout(() => openReadScreen(), 50);
-                    };
-
-                    buttons.unshift(
-                        <ActionSheetRow
-                            label={`Odczyt (${getReviews().length})`}
-                            icon={<ActionSheetRow.Icon source={getAssetIDByName("ic_message_24px")} />}
-                            onPress={handleOpenRead}
-                        />,
-                        <ActionSheetRow
-                            label={reviewLabel}
-                            icon={<ActionSheetRow.Icon source={getAssetIDByName(reviewIcon)} />}
-                            onPress={handleToggleReview}
-                        />,
-                    );
-                });
-            });
-        });
-
-        cleanups.push(unpatchOpen);
-        console.log("[PartnershipHelper] PATCH: menu wiadomości spatchowane");
-        return true;
-    } catch (e) {
-        console.log("[PartnershipHelper] patchMessageMenu() wywalił się:", e);
+    if (!MessageLongPressActionSheet) {
+        console.log("[PartnershipHelper] MessageLongPressActionSheet nie znaleziony");
         return false;
     }
+    if (!ActionSheetRow) {
+        console.log("[PartnershipHelper] ActionSheetRow nie znaleziony");
+        return false;
+    }
+
+    let innerUnpatch: (() => void) | null = null;
+
+    const outerUnpatch = after("default", MessageLongPressActionSheet, (_args: any, ret: any) => {
+        if (innerUnpatch) innerUnpatch();
+
+        innerUnpatch = after("type", ret, (_a: any, component: any) => {
+            const recording = isRecording();
+            const reviewLabel = recording ? "Zakończ review" : "Rozpocznij review";
+            const reviewIcon = recording ? "ic_close_circle_24px" : "ic_add_circle_24px";
+
+            const handleToggleReview = () => {
+                if (isRecording()) {
+                    stopRecording();
+                    showToast("Review zatrzymany", getAssetIDByName("ic_information_24px"));
+                } else {
+                    startRecording();
+                    showToast("Review włączony — scrolluj kanał", getAssetIDByName("ic_information_24px"));
+                }
+            };
+
+            const handleOpenRead = () => {
+                setTimeout(() => openReadScreen(), 50);
+            };
+
+            const readRow = React.createElement(ActionSheetRow, {
+                label: `Odczyt (${getReviews().length})`,
+                icon: ActionSheetRowIcon
+                    ? React.createElement(ActionSheetRowIcon, { source: getAssetIDByName("ic_message_24px") })
+                    : undefined,
+                onPress: handleOpenRead,
+            });
+
+            const toggleRow = React.createElement(ActionSheetRow, {
+                label: reviewLabel,
+                icon: ActionSheetRowIcon
+                    ? React.createElement(ActionSheetRowIcon, { source: getAssetIDByName(reviewIcon) })
+                    : undefined,
+                onPress: handleToggleReview,
+            });
+
+            // Nowsze buildy: wiersze pogrupowane w ActionSheetRowGroup
+            const groups = findActionGroups(component);
+            if (groups && ActionSheetRowGroup) {
+                groups.push(
+                    React.createElement(
+                        ActionSheetRowGroup,
+                        { key: "partnership-helper" },
+                        readRow,
+                        toggleRow,
+                    ),
+                );
+                return;
+            }
+
+            // Starsze buildy: płaska tablica ActionSheetRow
+            const flat = findFlatButtons(component);
+            if (flat) {
+                flat.unshift(readRow, toggleRow);
+            } else {
+                console.log("[PartnershipHelper] nie znaleziono ani ActionSheetRowGroup ani płaskiej listy przycisków");
+            }
+        });
+    });
+
+    cleanups.push(() => {
+        if (innerUnpatch) innerUnpatch();
+        outerUnpatch();
+    });
+
+    console.log("[PartnershipHelper] PATCH: menu wiadomości spatchowane (nowy wzorzec)");
+    return true;
 }
