@@ -16,7 +16,7 @@ Powinien pojawić się toast "AcartoRevenge działa! 🎉" po otwarciu Discorda.
 ## Rozwój
 
 ```
-npm install 
+npm install
 npm run build
 ```
 
