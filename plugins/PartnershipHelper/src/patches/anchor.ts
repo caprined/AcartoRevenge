@@ -1,8 +1,8 @@
 import React from "react";
 import { find, findByTypeName } from "@vendetta/metro";
-import PartnershipOverlay from "../components/PartnershipOverlay";
+import ReadScreenHost from "../components/ReadScreenHost";
 
-const CANDIDATES = ["LaunchPadContainer", "AccessibilityPreferencesContextProvider", "KeyCommandsView"];
+const CANDIDATES = ["GuildsBar", "LaunchPadContainer"];
 
 function findTargetMemo(): { memoObj: any; name: string } | null {
     for (const name of CANDIDATES) {
@@ -25,31 +25,29 @@ function findTargetMemo(): { memoObj: any; name: string } | null {
 }
 
 /**
- * Zaczep na LaunchPadContainer — komponent blisko korzenia appki (opakowuje
- * cały StackNavigator), NIE ma nic wspólnego z paskiem serwerów. Powinien
- * być widoczny na KAŻDYM ekranie appki, nie tylko wewnątrz serwera.
- *
- * Patchujemy .type (nie .default) w miejscu, bo komponent jest prawdopodobnie
- * opakowany w React.memo — dokładnie ta sama poprawka co zadziałała
- * na GuildsBar dziś wieczorem przez żywe devtoolsy.
+ * WAŻNE: to NIE jest miejsce na widoczne UI. ReadScreenHost renderuje
+ * `null` gdy zamknięty, więc nie ma znaczenia że ten anchor bywa
+ * przycięty/niewidoczny wizualnie — kiedy Modal się otwiera, i tak
+ * eskaluje do natywnej, pełnoekranowej warstwy niezależnie od tego
+ * gdzie w drzewie React siedzi jego host.
  */
 export function patchAnchor(cleanups: (() => void)[]): boolean {
     try {
         const found = findTargetMemo();
         if (!found) {
-            console.log("[PartnershipHelper] żaden z kandydatów nie znaleziony:", CANDIDATES.join(", "));
+            console.log("[PartnershipHelper] żaden z kandydatów-hostów nie znaleziony:", CANDIDATES.join(", "));
             return false;
         }
         const { memoObj, name } = found;
         const origRender = memoObj.type;
 
-        memoObj.type = function PatchedWithOverlay(...args: any[]) {
+        memoObj.type = function PatchedWithHost(...args: any[]) {
             const original = origRender.apply(this, args);
-            return React.createElement(React.Fragment, null, original, React.createElement(PartnershipOverlay));
+            return React.createElement(React.Fragment, null, original, React.createElement(ReadScreenHost));
         };
 
         cleanups.push(() => { memoObj.type = origRender; });
-        console.log(`[PartnershipHelper] PATCH: overlay dopięty do ${name}`);
+        console.log(`[PartnershipHelper] PATCH: ReadScreenHost dopięty do ${name}`);
         return true;
     } catch (e) {
         console.log("[PartnershipHelper] patchAnchor() wywalił się:", e);
