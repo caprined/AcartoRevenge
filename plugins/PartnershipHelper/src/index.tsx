@@ -3,31 +3,33 @@ import { patchMessageMenu } from "./patches/messageMenu";
 import { stopRecording } from "./utils/recorder";
 import { showToast } from "@vendetta/ui/toasts";
 import { getAssetIDByName } from "@vendetta/ui/assets";
+import { log, error as logError } from "./utils/logger";
+import LogsScreen from "./components/LogsScreen";
 
 const cleanups: (() => void)[] = [];
 
 export default {
     onLoad() {
-        console.log("[PartnershipHelper] onLoad start");
+        log("onLoad start");
 
         let hostOk = false;
         try {
             hostOk = patchAnchor(cleanups);
         } catch (e) {
-            console.log("[PartnershipHelper] patchAnchor top-level error:", e);
+            logError("patchAnchor top-level error:", e);
         }
 
         let menuOk = false;
         try {
             menuOk = patchMessageMenu(cleanups);
         } catch (e) {
-            console.log("[PartnershipHelper] patchMessageMenu top-level error:", e);
+            logError("patchMessageMenu top-level error:", e);
         }
 
         try {
             if (!menuOk) {
                 showToast(
-                    "Partnership Helper: nie udało się spatchować menu wiadomości",
+                    "Partnership Helper: problem przy starcie, zobacz Configure",
                     getAssetIDByName("ic_warning_24px"),
                 );
             } else {
@@ -38,13 +40,14 @@ export default {
             }
         } catch { /* ignore */ }
 
-        console.log("[PartnershipHelper] onLoad done, hostOk =", hostOk, "menuOk =", menuOk);
+        log("onLoad done, hostOk =", hostOk, "menuOk =", menuOk);
     },
     onUnload() {
         stopRecording();
         for (const fn of cleanups) {
-            try { fn(); } catch (e) { console.log("[PartnershipHelper] cleanup error:", e); }
+            try { fn(); } catch (e) { logError("cleanup error:", e); }
         }
         cleanups.length = 0;
     },
+    settings: LogsScreen,
 };

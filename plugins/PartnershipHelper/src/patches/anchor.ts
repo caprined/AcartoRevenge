@@ -1,6 +1,7 @@
 import React from "react";
 import { find, findByTypeName } from "@vendetta/metro";
 import ReadScreenHost from "../components/ReadScreenHost";
+import { log, warn, error as logError } from "../utils/logger";
 
 const CANDIDATES = ["GuildsBar", "LaunchPadContainer"];
 
@@ -10,7 +11,7 @@ function findTargetMemo(): { memoObj: any; name: string } | null {
             const mod = findByTypeName(name);
             if (mod && typeof mod === "object" && "type" in mod) return { memoObj: mod, name };
         } catch (e) {
-            console.log(`[PartnershipHelper] findByTypeName(${name}) error:`, e);
+            warn(`findByTypeName(${name}) error:`, e);
         }
         try {
             const mod = find((m) => {
@@ -18,7 +19,7 @@ function findTargetMemo(): { memoObj: any; name: string } | null {
             });
             if (mod?.type) return { memoObj: mod, name };
         } catch (e) {
-            console.log(`[PartnershipHelper] find(${name}) error:`, e);
+            warn(`find(${name}) error:`, e);
         }
     }
     return null;
@@ -35,7 +36,7 @@ export function patchAnchor(cleanups: (() => void)[]): boolean {
     try {
         const found = findTargetMemo();
         if (!found) {
-            console.log("[PartnershipHelper] żaden z kandydatów-hostów nie znaleziony:", CANDIDATES.join(", "));
+            warn("żaden z kandydatów-hostów nie znaleziony:", CANDIDATES.join(", "));
             return false;
         }
         const { memoObj, name } = found;
@@ -47,10 +48,10 @@ export function patchAnchor(cleanups: (() => void)[]): boolean {
         };
 
         cleanups.push(() => { memoObj.type = origRender; });
-        console.log(`[PartnershipHelper] PATCH: ReadScreenHost dopięty do ${name}`);
+        log(`PATCH: ReadScreenHost dopięty do ${name}`);
         return true;
     } catch (e) {
-        console.log("[PartnershipHelper] patchAnchor() wywalił się:", e);
+        logError("patchAnchor() wywalił się:", e);
         return false;
     }
 }
