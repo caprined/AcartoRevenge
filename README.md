@@ -11,12 +11,12 @@ Pluginy dla Revenge (i forków: Kettu, ShiggyCord).
 https://caprined.github.io/AcartoRevenge/HelloAcarto
 ```
 
-Powinien pojawić się toast "AcartoRevenge działa! 🎉" po otwarciu Discorda. 
+Powinien pojawić się toast "AcartoRevenge działa! 🎉" po otwarciu Discorda.
 
 ## Rozwój
 
 ```
-npm install 
+npm install
 npm run build
 ```
 
