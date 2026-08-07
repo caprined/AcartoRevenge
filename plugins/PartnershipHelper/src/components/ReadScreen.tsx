@@ -37,8 +37,8 @@ function Row({ entry, onRemove, onNavigate }: { entry: ReviewEntry; onRemove: ()
                 <Pressable
                     style={rst.profileBtn}
                     onPress={() => {
-                        openProfile(entry.userId);
                         onNavigate();
+                        setTimeout(() => openProfile(entry.userId), 300);
                     }}
                 >
                     <Text style={rst.profileBtnText}>👤</Text>
@@ -46,9 +46,9 @@ function Row({ entry, onRemove, onNavigate }: { entry: ReviewEntry; onRemove: ()
                 <Pressable
                     style={rst.sendBtn}
                     onPress={() => {
-                        openDM(entry.userId);
                         onRemove();
                         onNavigate();
+                        setTimeout(() => openDM(entry.userId), 300);
                     }}
                 >
                     <Text style={rst.sendBtnText}>Wyślij wiadomość</Text>
