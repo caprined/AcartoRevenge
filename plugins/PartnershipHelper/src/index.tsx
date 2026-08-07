@@ -1,4 +1,3 @@
-import { patchAnchor } from "./patches/anchor";
 import { patchMessageMenu } from "./patches/messageMenu";
 import { stopRecording } from "./utils/recorder";
 import { showToast } from "@vendetta/ui/toasts";
@@ -11,13 +10,6 @@ const cleanups: (() => void)[] = [];
 export default {
     onLoad() {
         log("onLoad start");
-
-        let hostOk = false;
-        try {
-            hostOk = patchAnchor(cleanups);
-        } catch (e) {
-            logError("patchAnchor top-level error:", e);
-        }
 
         let menuOk = false;
         try {
@@ -40,7 +32,7 @@ export default {
             }
         } catch { /* ignore */ }
 
-        log("onLoad done, hostOk =", hostOk, "menuOk =", menuOk);
+        log("onLoad done, menuOk =", menuOk);
     },
     onUnload() {
         stopRecording();

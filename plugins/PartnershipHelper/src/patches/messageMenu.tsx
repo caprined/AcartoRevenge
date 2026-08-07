@@ -1,4 +1,5 @@
 import { findByProps } from "@vendetta/metro";
+import { React } from "@vendetta/metro/common";
 import { after, before } from "@vendetta/patcher";
 import { getAssetIDByName } from "@vendetta/ui/assets";
 import { Forms } from "@vendetta/ui/components";
@@ -6,7 +7,8 @@ import { findInReactTree } from "@vendetta/utils";
 import { showToast } from "@vendetta/ui/toasts";
 import { startRecording, stopRecording, isRecording } from "../utils/recorder";
 import { getReviews } from "../utils/store";
-import { openReadScreen } from "../utils/bus";
+import { Alert } from "../utils/alert";
+import ReadScreen from "../components/ReadScreen";
 import { log, warn, error as logError } from "../utils/logger";
 
 const LazyActionSheet = findByProps("openLazy", "hideActionSheet");
@@ -61,8 +63,12 @@ export function patchMessageMenu(cleanups: (() => void)[]): boolean {
                 };
 
                 const handleOpenRead = () => {
-                    LazyActionSheet.hideActionSheet();
-                    setTimeout(() => openReadScreen(), 50);
+                    Alert.openLazy({
+                        importer: async () =>
+                            React.createElement(ReadScreen, { onClose: () => Alert.close() }),
+                        isDismissable: true,
+                        hideActionSheet: true,
+                    });
                 };
 
                 buttons.splice(1, 0,
