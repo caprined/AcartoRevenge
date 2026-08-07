@@ -24,9 +24,6 @@ export function openDM(userId: string) {
         log("openDM: PrivateChannelActions keys =", JSON.stringify(Object.keys(PrivateChannelActions ?? {})));
     } catch { /* ignore */ }
 
-    const ensureFn =
-        PrivateChannelActions?.getOrEnsurePrivateChannel ?? PrivateChannelActions?.ensurePrivateChannel;
-
     const navigateTo = (channelId: string) => {
         try {
             if (PrivateChannelActions?.openChannel) {
@@ -40,9 +37,16 @@ export function openDM(userId: string) {
         }
     };
 
-    if (ensureFn) {
+    const hasEnsure = !!(PrivateChannelActions?.getOrEnsurePrivateChannel ?? PrivateChannelActions?.ensurePrivateChannel);
+
+    if (hasEnsure) {
         try {
-            const result = ensureFn(userId);
+            // WAŻNE: wołamy metodę BEZPOŚREDNIO na obiekcie (nie przez
+            // oderwaną zmienną) — inaczej metoda traci swój `this` w środku.
+            const result = PrivateChannelActions.getOrEnsurePrivateChannel
+                ? PrivateChannelActions.getOrEnsurePrivateChannel(userId)
+                : PrivateChannelActions.ensurePrivateChannel(userId);
+
             log("openDM: ensure() zwrócił typeof =", typeof result);
 
             if (result && typeof (result as any).then === "function") {
