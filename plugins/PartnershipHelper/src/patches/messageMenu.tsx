@@ -65,6 +65,7 @@ export function patchMessageMenu(cleanups: (() => void)[]): boolean {
                         key="partnership-helper-read"
                         ActionSheetRow={ActionSheetRow}
                         iconSource={getAssetIDByName("ic_message_24px")}
+                        hideActionSheet={() => LazyActionSheet.hideActionSheet()}
                     />,
                     <ActionSheetRow
                         key="partnership-helper-toggle"

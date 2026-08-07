@@ -4,9 +4,8 @@ import ReadScreen from "./ReadScreen";
 import { getReviews } from "../utils/store";
 import { log, error as logError } from "../utils/logger";
 
-export default function ReadTriggerRow({ ActionSheetRow, iconSource }: { ActionSheetRow: any; iconSource: any }) {
+export default function ReadTriggerRow({ ActionSheetRow, iconSource, hideActionSheet }: { ActionSheetRow: any; iconSource: any; hideActionSheet?: () => void }) {
     const [open, setOpen] = React.useState(false);
-    const [crashed, setCrashed] = React.useState<string | null>(null);
 
     return (
         <>
@@ -26,15 +25,15 @@ export default function ReadTriggerRow({ ActionSheetRow, iconSource }: { ActionS
                     statusBarTranslucent
                     onRequestClose={() => setOpen(false)}
                 >
-                    <ErrorSafeReadScreen onClose={() => setOpen(false)} />
+                    <ErrorSafeReadScreen onClose={() => setOpen(false)} onNavigateAway={hideActionSheet} />
                 </Modal>
             )}
         </>
     );
 }
 
-class ErrorSafeReadScreen extends React.Component<{ onClose: () => void }, { error: string | null }> {
-    constructor(props: { onClose: () => void }) {
+class ErrorSafeReadScreen extends React.Component<{ onClose: () => void; onNavigateAway?: () => void }, { error: string | null }> {
+    constructor(props: { onClose: () => void; onNavigateAway?: () => void }) {
         super(props);
         this.state = { error: null };
     }
@@ -48,6 +47,6 @@ class ErrorSafeReadScreen extends React.Component<{ onClose: () => void }, { err
         if (this.state?.error) {
             return null; // nie blokujemy appki nawet jeśli coś tu pęknie
         }
-        return <ReadScreen onClose={this.props.onClose} />;
+        return <ReadScreen onClose={this.props.onClose} onNavigateAway={this.props.onNavigateAway} />;
     }
 }

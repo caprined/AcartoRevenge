@@ -10,9 +10,10 @@ const Flux = findByProps("useStateFromStores");
 
 interface Props {
     onClose: () => void;
+    onNavigateAway?: () => void;
 }
 
-function Row({ entry, onRemove, onNavigate }: { entry: ReviewEntry; onRemove: () => void; onNavigate: () => void }) {
+function Row({ entry, onRemove, onNavigate, onNavigateAway }: { entry: ReviewEntry; onRemove: () => void; onNavigate: () => void; onNavigateAway?: () => void }) {
     React.useEffect(() => {
         fetchUserIfMissing(entry.userId);
     }, [entry.userId]);
@@ -38,7 +39,10 @@ function Row({ entry, onRemove, onNavigate }: { entry: ReviewEntry; onRemove: ()
                     style={rst.profileBtn}
                     onPress={() => {
                         onNavigate();
-                        setTimeout(() => openProfile(entry.userId), 300);
+                        setTimeout(() => {
+                            openProfile(entry.userId);
+                            try { onNavigateAway?.(); } catch { /* ignore */ }
+                        }, 300);
                     }}
                 >
                     <Text style={rst.profileBtnText}>👤</Text>
@@ -48,7 +52,10 @@ function Row({ entry, onRemove, onNavigate }: { entry: ReviewEntry; onRemove: ()
                     onPress={() => {
                         onRemove();
                         onNavigate();
-                        setTimeout(() => openDM(entry.userId), 300);
+                        setTimeout(() => {
+                            openDM(entry.userId);
+                            try { onNavigateAway?.(); } catch { /* ignore */ }
+                        }, 300);
                     }}
                 >
                     <Text style={rst.sendBtnText}>Wyślij wiadomość</Text>
@@ -61,7 +68,7 @@ function Row({ entry, onRemove, onNavigate }: { entry: ReviewEntry; onRemove: ()
     );
 }
 
-export default function ReadScreen({ onClose }: Props) {
+export default function ReadScreen({ onClose, onNavigateAway }: Props) {
     const [, forceRender] = React.useReducer((x) => x + 1, 0);
     const slide = React.useRef(new Animated.Value(SCREEN_H)).current;
 
@@ -96,6 +103,7 @@ export default function ReadScreen({ onClose }: Props) {
                                 entry={e}
                                 onRemove={() => { removeReview(e.userId); forceRender(); }}
                                 onNavigate={close}
+                                onNavigateAway={onNavigateAway}
                             />
                         ))
                     )}

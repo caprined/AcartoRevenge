@@ -9,6 +9,7 @@ export const UserStore = findByStoreName("UserStore");
 
 const PrivateChannelActions =
     findByProps("openPrivateChannel") ?? findByProps("selectPrivateChannel");
+const RootNav = findByProps("getRootNavigationRef");
 
 const ProfileActions =
     findByProps("openUserProfile") ?? findByProps("showUserProfile") ?? findByProps("fetchProfile");
@@ -34,6 +35,16 @@ export function openDM(userId: string) {
             }
         } catch (e) {
             warn("openDM: openChannel() rzucił błąd:", e);
+        }
+
+        // openChannel() zdaje się tylko tworzyć/aktualizować stan, ale nie
+        // przełączać widocznego ekranu na mobile. Dokładamy jawną nawigację
+        // tym samym wzorcem co sprawdzony w ServerDrawer dla serwerów.
+        try {
+            RootNav?.getRootNavigationRef?.()?.navigate("guilds", { guildId: null, channelId });
+            log("openDM: RootNav.navigate() wywołany dla", channelId);
+        } catch (e) {
+            warn("openDM: RootNav.navigate() rzucił błąd:", e);
         }
     };
 
