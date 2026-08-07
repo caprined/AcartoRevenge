@@ -21,17 +21,42 @@ const ProfileActions =
  */
 export function openDM(userId: string) {
     try {
-        if (PrivateChannelActions?.openPrivateChannel) {
-            PrivateChannelActions.openPrivateChannel([userId]);
+        log("openDM: PrivateChannelActions keys =", JSON.stringify(Object.keys(PrivateChannelActions ?? {})));
+    } catch { /* ignore */ }
+
+    // UWAGA: nie próbujemy wielu wariantów w pętli jeśli żaden nie rzuca
+    // błędu — mogłoby to odpalić kilka różnych akcji Discorda naraz (kilka
+    // kanałów/grup) przy jednym kliknięciu. Próbujemy NAJBARDZIEJ
+    // prawdopodobnego kształtu, z fallbackiem tylko gdy faktycznie rzuci wyjątek.
+    if (PrivateChannelActions?.openPrivateChannel) {
+        const fn = PrivateChannelActions.openPrivateChannel;
+        try {
+            fn({ recipients: [userId] });
+            log("openDM: wywołano openPrivateChannel({recipients:[userId]})");
             return true;
+        } catch (e) {
+            warn("openDM: {recipients} rzuciło błąd, próbuję [userId]:", e);
+            try {
+                fn([userId]);
+                log("openDM: wywołano openPrivateChannel([userId])");
+                return true;
+            } catch (e2) {
+                warn("openDM: [userId] też rzuciło błąd:", e2);
+            }
         }
-        if (PrivateChannelActions?.selectPrivateChannel) {
-            PrivateChannelActions.selectPrivateChannel(userId);
-            return true;
-        }
-    } catch (e) {
-        warn("openDM error:", e);
     }
+
+    if (PrivateChannelActions?.selectPrivateChannel) {
+        try {
+            PrivateChannelActions.selectPrivateChannel(userId);
+            log("openDM: użyto selectPrivateChannel(userId)");
+            return true;
+        } catch (e) {
+            warn("openDM: selectPrivateChannel error:", e);
+        }
+    }
+
+    warn("openDM: żaden wariant nie zadziałał");
     return false;
 }
 
