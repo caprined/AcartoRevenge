@@ -1,17 +1,27 @@
 import React from "react";
 import { View, Text, ScrollView, Pressable, Animated, StyleSheet, Dimensions } from "react-native";
+import { findByProps, findByStoreName } from "@vendetta/metro";
 import { getReviews, removeReview, ReviewEntry } from "../utils/store";
-import { getDisplayName, openDM } from "../utils/discord";
+import { getDisplayName, openDM, openProfile, fetchUserIfMissing, UserStore } from "../utils/discord";
 import { formatRelative } from "../utils/time";
 
 const { height: SCREEN_H } = Dimensions.get("window");
+const Flux = findByProps("useStateFromStores");
 
 interface Props {
     onClose: () => void;
 }
 
-function Row({ entry, onRemove }: { entry: ReviewEntry; onRemove: () => void }) {
-    const { displayName, username } = getDisplayName(entry.userId);
+function Row({ entry, onRemove, onNavigate }: { entry: ReviewEntry; onRemove: () => void; onNavigate: () => void }) {
+    React.useEffect(() => {
+        fetchUserIfMissing(entry.userId);
+    }, [entry.userId]);
+
+    const { displayName, username } = Flux?.useStateFromStores?.(
+        [UserStore],
+        () => getDisplayName(entry.userId),
+        [entry.userId],
+    ) ?? getDisplayName(entry.userId);
 
     return (
         <View style={rst.row}>
@@ -25,10 +35,20 @@ function Row({ entry, onRemove }: { entry: ReviewEntry; onRemove: () => void }) 
             </View>
             <View style={rst.actions}>
                 <Pressable
+                    style={rst.profileBtn}
+                    onPress={() => {
+                        openProfile(entry.userId);
+                        onNavigate();
+                    }}
+                >
+                    <Text style={rst.profileBtnText}>👤</Text>
+                </Pressable>
+                <Pressable
                     style={rst.sendBtn}
                     onPress={() => {
                         openDM(entry.userId);
                         onRemove();
+                        onNavigate();
                     }}
                 >
                     <Text style={rst.sendBtnText}>Wyślij wiadomość</Text>
@@ -75,6 +95,7 @@ export default function ReadScreen({ onClose }: Props) {
                                 key={e.userId}
                                 entry={e}
                                 onRemove={() => { removeReview(e.userId); forceRender(); }}
+                                onNavigate={close}
                             />
                         ))
                     )}
@@ -131,6 +152,11 @@ const rst = StyleSheet.create({
     guildName: { color: "#b5bac1", fontSize: 12, marginTop: 4 },
     timestamp: { color: "#949ba4", fontSize: 11 },
     actions: { flexDirection: "row", marginTop: 10, gap: 8 },
+    profileBtn: {
+        backgroundColor: "#3a3c41",
+        borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, alignItems: "center", justifyContent: "center",
+    },
+    profileBtnText: { fontSize: 16 },
     sendBtn: {
         flex: 1, backgroundColor: "#5865f2",
         borderRadius: 8, paddingVertical: 10, alignItems: "center",
