@@ -1,12 +1,14 @@
 import React from "react";
 import { Modal } from "react-native";
 import { subscribe } from "../utils/bus";
+import { log } from "../utils/logger";
 import ReadScreen from "./ReadScreen";
 
 export default function ReadScreenHost() {
     const [open, setOpen] = React.useState(false);
 
     React.useEffect(() => {
+        log("ReadScreenHost zamontowany");
         return subscribe(() => setOpen(true));
     }, []);
 
