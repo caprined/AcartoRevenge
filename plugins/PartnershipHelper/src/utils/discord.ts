@@ -24,35 +24,55 @@ export function openDM(userId: string) {
         log("openDM: PrivateChannelActions keys =", JSON.stringify(Object.keys(PrivateChannelActions ?? {})));
     } catch { /* ignore */ }
 
-    // UWAGA: nie próbujemy wielu wariantów w pętli jeśli żaden nie rzuca
-    // błędu — mogłoby to odpalić kilka różnych akcji Discorda naraz (kilka
-    // kanałów/grup) przy jednym kliknięciu. Próbujemy NAJBARDZIEJ
-    // prawdopodobnego kształtu, z fallbackiem tylko gdy faktycznie rzuci wyjątek.
-    if (PrivateChannelActions?.openPrivateChannel) {
-        const fn = PrivateChannelActions.openPrivateChannel;
+    const ensureFn =
+        PrivateChannelActions?.getOrEnsurePrivateChannel ?? PrivateChannelActions?.ensurePrivateChannel;
+
+    const navigateTo = (channelId: string) => {
         try {
-            fn({ recipients: [userId] });
-            log("openDM: wywołano openPrivateChannel({recipients:[userId]})");
-            return true;
-        } catch (e) {
-            warn("openDM: {recipients} rzuciło błąd, próbuję [userId]:", e);
-            try {
-                fn([userId]);
-                log("openDM: wywołano openPrivateChannel([userId])");
-                return true;
-            } catch (e2) {
-                warn("openDM: [userId] też rzuciło błąd:", e2);
+            if (PrivateChannelActions?.openChannel) {
+                PrivateChannelActions.openChannel(channelId);
+                log("openDM: openChannel() wywołany dla", channelId);
+            } else {
+                warn("openDM: brak openChannel do nawigacji");
             }
+        } catch (e) {
+            warn("openDM: openChannel() rzucił błąd:", e);
+        }
+    };
+
+    if (ensureFn) {
+        try {
+            const result = ensureFn(userId);
+            log("openDM: ensure() zwrócił typeof =", typeof result);
+
+            if (result && typeof (result as any).then === "function") {
+                (result as Promise<any>)
+                    .then((ch: any) => navigateTo(ch?.id ?? ch))
+                    .catch((e: any) => warn("openDM: ensure() promise reject:", e));
+                return true;
+            }
+            if (result && typeof result === "object" && (result as any).id) {
+                navigateTo((result as any).id);
+                return true;
+            }
+            if (typeof result === "string") {
+                navigateTo(result);
+                return true;
+            }
+            warn("openDM: nierozpoznany kształt wyniku ensure(), spróbuj Configure po kolejnej próbie");
+        } catch (e) {
+            warn("openDM: ensure() rzucił błąd:", e);
         }
     }
 
-    if (PrivateChannelActions?.selectPrivateChannel) {
+    // Fallback — stary wariant, na wszelki wypadek
+    if (PrivateChannelActions?.openPrivateChannel) {
         try {
-            PrivateChannelActions.selectPrivateChannel(userId);
-            log("openDM: użyto selectPrivateChannel(userId)");
+            PrivateChannelActions.openPrivateChannel({ recipients: [userId] });
+            log("openDM: fallback openPrivateChannel({recipients})");
             return true;
         } catch (e) {
-            warn("openDM: selectPrivateChannel error:", e);
+            warn("openDM: fallback też rzucił błąd:", e);
         }
     }
 
