@@ -20,7 +20,7 @@ const ProfileActions =
  * iteruje po pojedynczych znakach ID jako "userach" — stąd bezsensowne,
  * puste grupy zamiast 1:1 DM-a.
  */
-export function openDM(userId: string) {
+export function openDM(userId: string, onChannelResolved?: (channelId: string) => void) {
     try {
         log("openDM: PrivateChannelActions keys =", JSON.stringify(Object.keys(PrivateChannelActions ?? {})));
     } catch { /* ignore */ }
@@ -46,6 +46,8 @@ export function openDM(userId: string) {
         } catch (e) {
             warn("openDM: RootNav.navigate() rzucił błąd:", e);
         }
+
+        try { onChannelResolved?.(channelId); } catch { /* ignore */ }
     };
 
     const hasEnsure = !!(PrivateChannelActions?.getOrEnsurePrivateChannel ?? PrivateChannelActions?.ensurePrivateChannel);
@@ -95,6 +97,52 @@ export function openDM(userId: string) {
     return false;
 }
 
+export function getCurrentUserId(): string | null {
+    try {
+        return UserStore?.getCurrentUser?.()?.id ?? null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Nie usuwamy wpisu od razu po kliknięciu "Wyślij wiadomość" — czekamy aż
+ * user FAKTYCZNIE coś napisze w tym konkretnym DM-ie (nasłuch na
+ * MESSAGE_CREATE autorstwa nas samych w tym kanale). Auto-sprzątanie po
+ * 30 minutach na wypadek gdyby user nic nie wysłał.
+ */
+export function watchForSentMessage(channelId: string, onSent: () => void) {
+    const myId = getCurrentUserId();
+    if (!myId || !FluxDispatcher?.subscribe) {
+        warn("watchForSentMessage: brak currentUserId lub FluxDispatcher — usuwam wpis od razu jako fallback");
+        onSent();
+        return;
+    }
+
+    let done = false;
+    const handler = (event: any) => {
+        if (done) return;
+        if (event?.type !== "MESSAGE_CREATE") return;
+        const msg = event.message;
+        if (msg?.channel_id === channelId && msg?.author?.id === myId) {
+            done = true;
+            FluxDispatcher.unsubscribe("MESSAGE_CREATE", handler);
+            log("watchForSentMessage: wykryto wysłaną wiadomość w", channelId);
+            onSent();
+        }
+    };
+
+    FluxDispatcher.subscribe("MESSAGE_CREATE", handler);
+
+    setTimeout(() => {
+        if (!done) {
+            done = true;
+            FluxDispatcher.unsubscribe("MESSAGE_CREATE", handler);
+            warn("watchForSentMessage: timeout (30 min), przestałem czekać na", channelId);
+        }
+    }, 30 * 60 * 1000);
+}
+
 export function openProfile(userId: string) {
     try {
         if (ProfileActions?.openUserProfile) {
@@ -141,6 +189,34 @@ export function fetchUserIfMissing(userId: string) {
         }
     }
     warn("fetchUserIfMissing: żadna metoda fetch nie zadziałała dla", userId);
+}
+
+export const RelationshipStore = findByStoreName("RelationshipStore");
+const RelationshipActions = findByProps("addRelationship", "removeRelationship") ?? findByProps("addRelationship");
+
+export function isFriend(userId: string): boolean {
+    try {
+        // Typ 1 = znajomy w wewnętrznym enumie Discorda; niektóre buildy mają
+        // gotowe isFriend(), inne trzeba sprawdzić przez getRelationshipType.
+        if (RelationshipStore?.isFriend) return !!RelationshipStore.isFriend(userId);
+        if (RelationshipStore?.getRelationshipType) return RelationshipStore.getRelationshipType(userId) === 1;
+        return false;
+    } catch {
+        return false;
+    }
+}
+
+export function addFriend(userId: string): boolean {
+    try {
+        if (RelationshipActions?.addRelationship) {
+            RelationshipActions.addRelationship(userId, { type: 1 });
+            log("addFriend: wysłano zaproszenie do", userId);
+            return true;
+        }
+    } catch (e) {
+        warn("addFriend error:", e);
+    }
+    return false;
 }
 
 const MENTION_RE = /<@!?(\d+)>/g;

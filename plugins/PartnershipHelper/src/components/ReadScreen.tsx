@@ -2,8 +2,19 @@ import React from "react";
 import { View, Text, ScrollView, Pressable, Animated, StyleSheet, Dimensions } from "react-native";
 import { findByProps, findByStoreName } from "@vendetta/metro";
 import { getReviews, removeReview, ReviewEntry } from "../utils/store";
-import { getDisplayName, openDM, openProfile, fetchUserIfMissing, UserStore } from "../utils/discord";
+import {
+    getDisplayName,
+    openDM,
+    openProfile,
+    fetchUserIfMissing,
+    watchForSentMessage,
+    isFriend,
+    addFriend,
+    UserStore,
+    RelationshipStore,
+} from "../utils/discord";
 import { formatRelative } from "../utils/time";
+import { log } from "../utils/logger";
 
 const { height: SCREEN_H } = Dimensions.get("window");
 const Flux = findByProps("useStateFromStores");
@@ -24,6 +35,35 @@ function Row({ entry, onRemove, onNavigate, onNavigateAway }: { entry: ReviewEnt
         [entry.userId],
     ) ?? getDisplayName(entry.userId);
 
+    const friend = Flux?.useStateFromStores?.(
+        [RelationshipStore],
+        () => isFriend(entry.userId),
+        [entry.userId],
+    ) ?? isFriend(entry.userId);
+
+    const handleSend = () => {
+        onNavigate();
+        setTimeout(() => {
+            openDM(entry.userId, (channelId) => {
+                log("Row: czekam na wysłanie wiadomości zanim usunę wpis", entry.userId);
+                watchForSentMessage(channelId, () => removeReview(entry.userId));
+            });
+            try { onNavigateAway?.(); } catch { /* ignore */ }
+        }, 300);
+    };
+
+    const handleProfile = () => {
+        onNavigate();
+        setTimeout(() => {
+            openProfile(entry.userId);
+            try { onNavigateAway?.(); } catch { /* ignore */ }
+        }, 300);
+    };
+
+    const handleAddFriend = () => {
+        addFriend(entry.userId);
+    };
+
     return (
         <View style={rst.row}>
             <View style={rst.rowTop}>
@@ -35,28 +75,17 @@ function Row({ entry, onRemove, onNavigate, onNavigateAway }: { entry: ReviewEnt
                 <Text style={rst.timestamp}>{formatRelative(entry.timestamp)}</Text>
             </View>
             <View style={rst.actions}>
-                <Pressable
-                    style={rst.profileBtn}
-                    onPress={() => {
-                        onNavigate();
-                        setTimeout(() => {
-                            openProfile(entry.userId);
-                            try { onNavigateAway?.(); } catch { /* ignore */ }
-                        }, 300);
-                    }}
-                >
+                <Pressable style={rst.profileBtn} onPress={handleProfile}>
                     <Text style={rst.profileBtnText}>👤</Text>
                 </Pressable>
+                {!friend && (
+                    <Pressable style={rst.friendBtn} onPress={handleAddFriend}>
+                        <Text style={rst.friendBtnText}>➕</Text>
+                    </Pressable>
+                )}
                 <Pressable
-                    style={rst.sendBtn}
-                    onPress={() => {
-                        onRemove();
-                        onNavigate();
-                        setTimeout(() => {
-                            openDM(entry.userId);
-                            try { onNavigateAway?.(); } catch { /* ignore */ }
-                        }, 300);
-                    }}
+                    style={[rst.sendBtn, friend ? rst.sendBtnFriend : rst.sendBtnDefault]}
+                    onPress={handleSend}
                 >
                     <Text style={rst.sendBtnText}>Wyślij wiadomość</Text>
                 </Pressable>
@@ -74,6 +103,10 @@ export default function ReadScreen({ onClose, onNavigateAway }: Props) {
 
     React.useEffect(() => {
         Animated.spring(slide, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
+        // Odświeżanie co minutę, żeby "X minut temu" aktualizowało się na
+        // żywo, jeśli ktoś trzyma ten ekran otwarty dłużej.
+        const interval = setInterval(() => forceRender(), 60_000);
+        return () => clearInterval(interval);
     }, []);
 
     const close = () => {
@@ -159,16 +192,23 @@ const rst = StyleSheet.create({
     username: { color: "#949ba4", fontSize: 12, marginTop: 1 },
     guildName: { color: "#b5bac1", fontSize: 12, marginTop: 4 },
     timestamp: { color: "#949ba4", fontSize: 11 },
-    actions: { flexDirection: "row", marginTop: 10, gap: 8 },
+    actions: { flexDirection: "row", marginTop: 10, gap: 8, flexWrap: "wrap" },
     profileBtn: {
         backgroundColor: "#3a3c41",
         borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, alignItems: "center", justifyContent: "center",
     },
     profileBtnText: { fontSize: 16 },
+    friendBtn: {
+        backgroundColor: "#3a3c41",
+        borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, alignItems: "center", justifyContent: "center",
+    },
+    friendBtnText: { fontSize: 16 },
     sendBtn: {
-        flex: 1, backgroundColor: "#5865f2",
+        flex: 1, minWidth: 140,
         borderRadius: 8, paddingVertical: 10, alignItems: "center",
     },
+    sendBtnDefault: { backgroundColor: "#5865f2" },
+    sendBtnFriend: { backgroundColor: "#2d9d54" },
     sendBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
     deleteBtn: {
         backgroundColor: "#3a3c41",
