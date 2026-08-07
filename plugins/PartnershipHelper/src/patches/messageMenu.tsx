@@ -1,5 +1,4 @@
 import { findByProps } from "@vendetta/metro";
-import { React } from "@vendetta/metro/common";
 import { after, before } from "@vendetta/patcher";
 import { getAssetIDByName } from "@vendetta/ui/assets";
 import { Forms } from "@vendetta/ui/components";
@@ -7,8 +6,7 @@ import { findInReactTree } from "@vendetta/utils";
 import { showToast } from "@vendetta/ui/toasts";
 import { startRecording, stopRecording, isRecording } from "../utils/recorder";
 import { getReviews } from "../utils/store";
-import { Alert } from "../utils/alert";
-import ReadScreen from "../components/ReadScreen";
+import ReadTriggerRow from "../components/ReadTriggerRow";
 import { log, warn, error as logError } from "../utils/logger";
 
 const LazyActionSheet = findByProps("openLazy", "hideActionSheet");
@@ -62,21 +60,11 @@ export function patchMessageMenu(cleanups: (() => void)[]): boolean {
                     }
                 };
 
-                const handleOpenRead = () => {
-                    Alert.openLazy({
-                        importer: async () =>
-                            React.createElement(ReadScreen, { onClose: () => Alert.close() }),
-                        isDismissable: true,
-                        hideActionSheet: true,
-                    });
-                };
-
                 buttons.splice(1, 0,
-                    <ActionSheetRow
+                    <ReadTriggerRow
                         key="partnership-helper-read"
-                        label={`Odczyt (${getReviews().length})`}
-                        icon={<ActionSheetRow.Icon source={getAssetIDByName("ic_message_24px")} />}
-                        onPress={handleOpenRead}
+                        ActionSheetRow={ActionSheetRow}
+                        iconSource={getAssetIDByName("ic_message_24px")}
                     />,
                     <ActionSheetRow
                         key="partnership-helper-toggle"
