@@ -3,11 +3,13 @@ import {
     SelectedChannelStore,
     extractMentionedUserIds,
     getGuildNameForChannel,
+    getCurrentUserId,
 } from "./discord";
 import { addReview } from "./store";
 
 let active = false;
 let onEventBound: ((event: any) => void) | null = null;
+let sessionAddedCount = 0;
 
 function toMillis(ts: any): number {
     try {
@@ -39,9 +41,12 @@ function processMessage(message: any) {
     if (!guildInfo) return; // pomijamy DM-y / brak serwera
 
     const timestamp = toMillis(message.timestamp);
+    const myId = getCurrentUserId();
 
     for (const userId of ids) {
-        addReview({
+        if (myId && userId === myId) continue; // nie dodawaj samego siebie
+
+        const added = addReview({
             userId,
             guildId: guildInfo.guildId,
             guildName: guildInfo.guildName,
@@ -49,6 +54,7 @@ function processMessage(message: any) {
             timestamp,
             foundAt: Date.now(),
         });
+        if (added) sessionAddedCount++;
     }
 }
 
@@ -67,6 +73,7 @@ function onEvent(event: any) {
 export function startRecording() {
     if (active) return;
     active = true;
+    sessionAddedCount = 0;
     onEventBound = onEvent;
     FluxDispatcher?.subscribe?.("LOAD_MESSAGES_SUCCESS", onEventBound);
     FluxDispatcher?.subscribe?.("MESSAGE_CREATE", onEventBound);
@@ -84,4 +91,8 @@ export function stopRecording() {
 
 export function isRecording() {
     return active;
+}
+
+export function getSessionAddedCount() {
+    return sessionAddedCount;
 }

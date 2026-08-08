@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, ScrollView, Pressable, Animated, StyleSheet, Dimensions } from "react-native";
+import { View, Text, FlatList, Pressable, Animated, StyleSheet, Dimensions } from "react-native";
 import { findByProps, findByStoreName } from "@vendetta/metro";
 import { getReviews, removeReview, ReviewEntry } from "../utils/store";
 import {
@@ -10,11 +10,14 @@ import {
     watchForSentMessage,
     isFriend,
     addFriend,
+    hasExistingConversation,
     UserStore,
     RelationshipStore,
 } from "../utils/discord";
 import { formatRelative } from "../utils/time";
 import { log } from "../utils/logger";
+import { showToast } from "@vendetta/ui/toasts";
+import { getAssetIDByName } from "@vendetta/ui/assets";
 
 const { height: SCREEN_H } = Dimensions.get("window");
 const Flux = findByProps("useStateFromStores");
@@ -41,7 +44,11 @@ function Row({ entry, onRemove, onNavigate, onNavigateAway }: { entry: ReviewEnt
         [entry.userId],
     ) ?? isFriend(entry.userId);
 
+    const alreadyTalked = React.useMemo(() => hasExistingConversation(entry.userId), [entry.userId]);
+
     const handleSend = () => {
+        // Wysłanie wiadomości = faktyczna nawigacja gdzie indziej, więc TO
+        // zamyka listę. Reszta akcji (profil/dodaj/usuń) ma ją zostawiać otwartą.
         onNavigate();
         setTimeout(() => {
             openDM(entry.userId, (channelId) => {
@@ -53,16 +60,21 @@ function Row({ entry, onRemove, onNavigate, onNavigateAway }: { entry: ReviewEnt
     };
 
     const handleProfile = () => {
-        onNavigate();
-        setTimeout(() => {
-            openProfile(entry.userId);
-            try { onNavigateAway?.(); } catch { /* ignore */ }
-        }, 300);
+        openProfile(entry.userId, (success) => {
+            if (!success) {
+                showToast("Wystąpił błąd podczas otwierania profilu", getAssetIDByName("ic_warning_24px"));
+            }
+        });
     };
 
     const handleAddFriend = () => {
-        addFriend(entry.userId);
+        const ok = addFriend(entry.userId);
+        if (!ok) {
+            showToast("Nie udało się dodać do znajomych", getAssetIDByName("ic_warning_24px"));
+        }
     };
+
+    const sendColor = friend ? rst.sendBtnFriend : alreadyTalked ? rst.sendBtnTalked : rst.sendBtnDefault;
 
     return (
         <View style={rst.row}>
@@ -75,18 +87,15 @@ function Row({ entry, onRemove, onNavigate, onNavigateAway }: { entry: ReviewEnt
                 <Text style={rst.timestamp}>{formatRelative(entry.timestamp)}</Text>
             </View>
             <View style={rst.actions}>
-                <Pressable style={rst.profileBtn} onPress={handleProfile}>
-                    <Text style={rst.profileBtnText}>👤</Text>
+                <Pressable style={rst.smallBtn} onPress={handleProfile}>
+                    <Text style={rst.smallBtnText}>Profil</Text>
                 </Pressable>
                 {!friend && (
-                    <Pressable style={rst.friendBtn} onPress={handleAddFriend}>
-                        <Text style={rst.friendBtnText}>➕</Text>
+                    <Pressable style={rst.smallBtn} onPress={handleAddFriend}>
+                        <Text style={rst.smallBtnText}>Dodaj znaj.</Text>
                     </Pressable>
                 )}
-                <Pressable
-                    style={[rst.sendBtn, friend ? rst.sendBtnFriend : rst.sendBtnDefault]}
-                    onPress={handleSend}
-                >
+                <Pressable style={[rst.sendBtn, sendColor]} onPress={handleSend}>
                     <Text style={rst.sendBtnText}>Wyślij wiadomość</Text>
                 </Pressable>
                 <Pressable style={rst.deleteBtn} onPress={onRemove}>
@@ -103,8 +112,6 @@ export default function ReadScreen({ onClose, onNavigateAway }: Props) {
 
     React.useEffect(() => {
         Animated.spring(slide, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
-        // Odświeżanie co minutę, żeby "X minut temu" aktualizowało się na
-        // żywo, jeśli ktoś trzyma ten ekran otwarty dłużej.
         const interval = setInterval(() => forceRender(), 60_000);
         return () => clearInterval(interval);
     }, []);
@@ -124,23 +131,32 @@ export default function ReadScreen({ onClose, onNavigateAway }: Props) {
                     <Text style={rst.title}>Partnership Helper · {entries.length}</Text>
                     <Pressable onPress={close}><Text style={rst.closeX}>✕</Text></Pressable>
                 </View>
-                <ScrollView style={rst.scroll} contentContainerStyle={rst.scrollContent}>
-                    {entries.length === 0 ? (
-                        <Text style={rst.empty}>
-                            Brak zebranych wzmianek. Uruchom "Stwórz review" i przescrolluj kanał z reklamami.
-                        </Text>
-                    ) : (
-                        entries.map((e) => (
+                {entries.length === 0 ? (
+                    <Text style={rst.empty}>
+                        Brak zebranych wzmianek. Uruchom "Stwórz review" i przescrolluj kanał z reklamami.
+                    </Text>
+                ) : (
+                    <FlatList
+                        style={rst.scroll}
+                        contentContainerStyle={rst.scrollContent}
+                        data={entries}
+                        keyExtractor={(e) => e.userId}
+                        // Wirtualizacja — renderuje tylko widoczne wiersze,
+                        // nie wszystkie 100+ naraz (to powodowało zawieszenie).
+                        initialNumToRender={12}
+                        maxToRenderPerBatch={10}
+                        windowSize={7}
+                        removeClippedSubviews
+                        renderItem={({ item: e }) => (
                             <Row
-                                key={e.userId}
                                 entry={e}
                                 onRemove={() => { removeReview(e.userId); forceRender(); }}
                                 onNavigate={close}
                                 onNavigateAway={onNavigateAway}
                             />
-                        ))
-                    )}
-                </ScrollView>
+                        )}
+                    />
+                )}
             </Animated.View>
         </View>
     );
@@ -192,23 +208,19 @@ const rst = StyleSheet.create({
     username: { color: "#949ba4", fontSize: 12, marginTop: 1 },
     guildName: { color: "#b5bac1", fontSize: 12, marginTop: 4 },
     timestamp: { color: "#949ba4", fontSize: 11 },
-    actions: { flexDirection: "row", marginTop: 10, gap: 8, flexWrap: "wrap" },
-    profileBtn: {
+    actions: { flexDirection: "row", marginTop: 10, gap: 6, flexWrap: "wrap" },
+    smallBtn: {
         backgroundColor: "#3a3c41",
-        borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, alignItems: "center", justifyContent: "center",
+        borderRadius: 8, paddingVertical: 10, paddingHorizontal: 10, alignItems: "center", justifyContent: "center",
     },
-    profileBtnText: { fontSize: 16 },
-    friendBtn: {
-        backgroundColor: "#3a3c41",
-        borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, alignItems: "center", justifyContent: "center",
-    },
-    friendBtnText: { fontSize: 16 },
+    smallBtnText: { color: "#dbdee1", fontSize: 12, fontWeight: "600" },
     sendBtn: {
-        flex: 1, minWidth: 140,
+        flex: 1, minWidth: 130,
         borderRadius: 8, paddingVertical: 10, alignItems: "center",
     },
     sendBtnDefault: { backgroundColor: "#5865f2" },
     sendBtnFriend: { backgroundColor: "#2d9d54" },
+    sendBtnTalked: { backgroundColor: "#e67e22" },
     sendBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
     deleteBtn: {
         backgroundColor: "#3a3c41",

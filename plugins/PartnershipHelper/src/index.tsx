@@ -1,5 +1,6 @@
 import { patchMessageMenu } from "./patches/messageMenu";
 import { stopRecording } from "./utils/recorder";
+import { getReviews } from "./utils/store";
 import { showToast } from "@vendetta/ui/toasts";
 import { getAssetIDByName } from "@vendetta/ui/assets";
 import { log, error as logError } from "./utils/logger";
@@ -25,8 +26,9 @@ export default {
                     getAssetIDByName("ic_warning_24px"),
                 );
             } else {
+                const count = getReviews().length;
                 showToast(
-                    "Partnership Helper załadowany — przytrzymaj wiadomość",
+                    `Załadowano ${count} ${count === 1 ? "wpis" : "wpisów"}`,
                     getAssetIDByName("ic_information_24px"),
                 );
             }

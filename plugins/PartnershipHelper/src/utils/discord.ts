@@ -143,20 +143,63 @@ export function watchForSentMessage(channelId: string, onSent: () => void) {
     }, 30 * 60 * 1000);
 }
 
-export function openProfile(userId: string) {
+/**
+ * Sprawdza czy mamy już otwarty/istniejący kanał DM z tym userem —
+ * przybliżony sygnał "czy kiedyś pisaliśmy", bez skanowania pełnej
+ * historii wiadomości (kosztowne przy 100+ wpisach naraz).
+ */
+export function hasExistingConversation(userId: string): boolean {
+    try {
+        const channelId = ChannelStore?.getDMFromUserId?.(userId);
+        return !!channelId;
+    } catch {
+        return false;
+    }
+}
+
+const UserProfileStore = findByStoreName("UserProfileStore");
+
+/**
+ * UWAGA — SZCZERZE: to jest heurystyka, nie pewność. Sprawdzamy czy po
+ * chwili UserProfileStore ma jakiekolwiek dane dla tego usera. Nie mam
+ * live-dostępu żeby zweryfikować że to faktycznie odzwierciedla "profil
+ * widoczny na ekranie" — jeśli to będzie dawać fałszywe alarmy albo
+ * przepuszczać prawdziwe błędy, powiedz co widzisz w Configure i to
+ * dopracujemy, zamiast teraz zgadywać głębiej bez potwierdzenia.
+ */
+export function openProfile(userId: string, onResult?: (success: boolean) => void) {
+    let called = false;
     try {
         if (ProfileActions?.openUserProfile) {
             ProfileActions.openUserProfile({ userId });
-            return true;
-        }
-        if (ProfileActions?.showUserProfile) {
+            called = true;
+        } else if (ProfileActions?.showUserProfile) {
             ProfileActions.showUserProfile({ userId });
-            return true;
+            called = true;
         }
     } catch (e) {
         warn("openProfile error:", e);
     }
-    return false;
+
+    if (!called) {
+        onResult?.(false);
+        return false;
+    }
+
+    if (onResult) {
+        setTimeout(() => {
+            try {
+                const hasData = !!UserProfileStore?.getUserProfile?.(userId);
+                log("openProfile: heurystyka po 700ms, hasData =", hasData);
+                onResult(hasData);
+            } catch (e) {
+                warn("openProfile: błąd heurystyki weryfikacji:", e);
+                onResult(true); // nie chcemy fałszywego alarmu jak sama weryfikacja padnie
+            }
+        }, 700);
+    }
+
+    return true;
 }
 
 const fetchAttempted = new Set<string>();
@@ -208,13 +251,26 @@ export function isFriend(userId: string): boolean {
 
 export function addFriend(userId: string): boolean {
     try {
-        if (RelationshipActions?.addRelationship) {
+        log("addFriend: RelationshipActions keys =", JSON.stringify(Object.keys(RelationshipActions ?? {})));
+    } catch { /* ignore */ }
+
+    if (RelationshipActions?.addRelationship) {
+        try {
             RelationshipActions.addRelationship(userId, { type: 1 });
-            log("addFriend: wysłano zaproszenie do", userId);
+            log("addFriend: wysłano zaproszenie (wariant z {type:1}) do", userId);
             return true;
+        } catch (e) {
+            warn("addFriend: {type:1} rzuciło błąd, próbuję bez drugiego argumentu:", e);
         }
-    } catch (e) {
-        warn("addFriend error:", e);
+        try {
+            RelationshipActions.addRelationship(userId);
+            log("addFriend: wysłano zaproszenie (wariant bez argumentu) do", userId);
+            return true;
+        } catch (e) {
+            warn("addFriend: wariant bez argumentu też rzucił błąd:", e);
+        }
+    } else {
+        warn("addFriend: brak addRelationship w tym module");
     }
     return false;
 }

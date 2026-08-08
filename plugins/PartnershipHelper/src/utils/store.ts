@@ -31,9 +31,8 @@ export function removeReview(userId: string) {
 
 export function getReviews(): ReviewEntry[] {
     const reviews = ensure();
-    // Sortowanie wg. czasu WYSŁANIA reklamy (im wcześniejszy, tym wyżej) —
-    // nie wg. kiedy MY ją znaleźliśmy scrollując.
-    return Object.values(reviews).sort((a, b) => a.timestamp - b.timestamp);
+    // Najnowsze (najpóźniej wysłane) na górze.
+    return Object.values(reviews).sort((a, b) => b.timestamp - a.timestamp);
 }
 
 export function hasReview(userId: string): boolean {

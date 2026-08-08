@@ -4,7 +4,7 @@ import { getAssetIDByName } from "@vendetta/ui/assets";
 import { Forms } from "@vendetta/ui/components";
 import { findInReactTree } from "@vendetta/utils";
 import { showToast } from "@vendetta/ui/toasts";
-import { startRecording, stopRecording, isRecording } from "../utils/recorder";
+import { startRecording, stopRecording, isRecording, getSessionAddedCount } from "../utils/recorder";
 import { getReviews } from "../utils/store";
 import ReadTriggerRow from "../components/ReadTriggerRow";
 import { log, warn, error as logError } from "../utils/logger";
@@ -13,6 +13,29 @@ const LazyActionSheet = findByProps("openLazy", "hideActionSheet");
 const ActionSheetRow = findByProps("ActionSheetRow")?.ActionSheetRow ?? Forms.FormRow;
 
 const patchedInstances = new Set<any>();
+
+let persistentToastInterval: ReturnType<typeof setInterval> | null = null;
+
+function startPersistentOnToast() {
+    stopPersistentOnToast();
+    showToast("Review: ON", getAssetIDByName("ic_information_24px"));
+    // showToast nie ma trybu "stały" — udajemy to odświeżając go cyklicznie
+    // dopóki review jest aktywny.
+    persistentToastInterval = setInterval(() => {
+        if (!isRecording()) {
+            stopPersistentOnToast();
+            return;
+        }
+        showToast("Review: ON", getAssetIDByName("ic_information_24px"));
+    }, 4000);
+}
+
+function stopPersistentOnToast() {
+    if (persistentToastInterval) {
+        clearInterval(persistentToastInterval);
+        persistentToastInterval = null;
+    }
+}
 
 export function patchMessageMenu(cleanups: (() => void)[]): boolean {
     if (!LazyActionSheet?.openLazy) {
@@ -52,11 +75,16 @@ export function patchMessageMenu(cleanups: (() => void)[]): boolean {
                 const handleToggleReview = () => {
                     LazyActionSheet.hideActionSheet();
                     if (isRecording()) {
+                        const added = getSessionAddedCount();
                         stopRecording();
-                        showToast("Review zatrzymany", getAssetIDByName("ic_information_24px"));
+                        stopPersistentOnToast();
+                        showToast(
+                            `Dodano ${added} ${added === 1 ? "wpis" : "wpisów"}`,
+                            getAssetIDByName("ic_information_24px"),
+                        );
                     } else {
                         startRecording();
-                        showToast("Review włączony — scrolluj kanał", getAssetIDByName("ic_information_24px"));
+                        startPersistentOnToast();
                     }
                 };
 
@@ -83,6 +111,7 @@ export function patchMessageMenu(cleanups: (() => void)[]): boolean {
     cleanups.push(() => {
         unpatchOpen();
         patchedInstances.clear();
+        stopPersistentOnToast();
     });
 
     log("PATCH: hook na openLazy zainstalowany");
