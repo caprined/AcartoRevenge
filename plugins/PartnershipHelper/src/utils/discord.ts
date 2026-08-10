@@ -257,22 +257,52 @@ export function addFriend(userId: string): boolean {
     if (RelationshipActions?.addRelationship) {
         try {
             RelationshipActions.addRelationship(userId, { type: 1 });
-            log("addFriend: wysłano zaproszenie (wariant z {type:1}) do", userId);
+            log("addFriend: wysłano zaproszenie (addRelationship+{type:1}) do", userId);
             return true;
         } catch (e) {
-            warn("addFriend: {type:1} rzuciło błąd, próbuję bez drugiego argumentu:", e);
+            warn("addFriend: addRelationship({type:1}) rzuciło błąd:", e);
         }
+    }
+    if (RelationshipActions?.updateRelationship) {
         try {
-            RelationshipActions.addRelationship(userId);
-            log("addFriend: wysłano zaproszenie (wariant bez argumentu) do", userId);
+            RelationshipActions.updateRelationship(userId, 1);
+            log("addFriend: wysłano zaproszenie (updateRelationship) do", userId);
             return true;
         } catch (e) {
-            warn("addFriend: wariant bez argumentu też rzucił błąd:", e);
+            warn("addFriend: updateRelationship(userId,1) rzuciło błąd:", e);
         }
-    } else {
-        warn("addFriend: brak addRelationship w tym module");
+    }
+    warn("addFriend: żadna metoda nie zadziałała");
+    return false;
+}
+
+const MessageActions = findByProps("sendMessage");
+
+export function sendMessageToChannel(channelId: string, content: string): boolean {
+    try {
+        if (MessageActions?.sendMessage) {
+            MessageActions.sendMessage(channelId, { content });
+            log("sendMessageToChannel: wysłano do", channelId);
+            return true;
+        }
+        warn("sendMessageToChannel: brak sendMessage w module");
+    } catch (e) {
+        warn("sendMessageToChannel error:", e);
     }
     return false;
+}
+
+/**
+ * Przełącza kontekst na kanał (potrzebne żeby sendMessage trafił we
+ * właściwe miejsce) bez zamykania naszego Modala — Modal i tak jest
+ * zawsze na wierzchu niezależnie od nawigacji pod spodem.
+ */
+export function openChannelSilently(channelId: string) {
+    try {
+        PrivateChannelActions?.openChannel?.(channelId);
+    } catch (e) {
+        warn("openChannelSilently error:", e);
+    }
 }
 
 const MENTION_RE = /<@!?(\d+)>/g;
