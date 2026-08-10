@@ -57,15 +57,15 @@ export function patchMessageMenu(cleanups: (() => void)[]): boolean {
         if (!component?.then) return;
 
         // Kontekst wiadomości którą przytrzymano — potrzebny do "Wyślij
-        // serwery" (dokąd wysłać) i "Opublikuj reklamę" (jaki to serwer).
+        // serwery" (dokąd wysłać) i "Opublikuj reklamę" (treść do przekazania).
         let channelId: string | null = null;
+        let messageContent = "";
         try {
             channelId = msg?.message?.channel_id ?? SelectedChannelStore?.getChannelId?.() ?? null;
+            messageContent = msg?.message?.content ?? "";
         } catch {
             channelId = null;
         }
-        const guildInfo = channelId ? getGuildNameForChannel(channelId) : null;
-        const currentGuildId = guildInfo?.guildId ?? null;
 
         component.then((instance: any) => {
             if (patchedInstances.has(instance)) return;
@@ -148,7 +148,7 @@ export function patchMessageMenu(cleanups: (() => void)[]): boolean {
                             iconSource={getAssetIDByName("ic_upload_24px") ?? getAssetIDByName("ic_message_24px")}
                             hideActionSheet={() => LazyActionSheet.hideActionSheet()}
                             renderScreen={({ onClose }) => (
-                                <PublishAdScreen onClose={onClose} currentGuildId={currentGuildId} />
+                                <PublishAdScreen onClose={onClose} messageContent={messageContent} />
                             )}
                         />,
                     );

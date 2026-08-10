@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, FlatList, Pressable, Animated, StyleSheet, Dimensions } from "react-native";
-import { getServers, getServerByGuildId } from "../utils/servers";
+import { getServers } from "../utils/servers";
 import { sendMessageToChannel, openChannelSilently } from "../utils/discord";
 import { showToast } from "@vendetta/ui/toasts";
 import { getAssetIDByName } from "@vendetta/ui/assets";
@@ -10,10 +10,15 @@ const { height: SCREEN_H } = Dimensions.get("window");
 
 interface Props {
     onClose: () => void;
-    currentGuildId: string | null;
+    messageContent: string;
 }
 
-export default function PublishAdScreen({ onClose, currentGuildId }: Props) {
+/**
+ * Bierze treść TEJ KONKRETNEJ przytrzymanej wiadomości (dowolnej — nie musi
+ * być z zarejestrowanego serwera) i wysyła ją na kanał partnerstw wybranego
+ * z listy serwera.
+ */
+export default function PublishAdScreen({ onClose, messageContent }: Props) {
     const slide = React.useRef(new Animated.Value(SCREEN_H)).current;
 
     React.useEffect(() => {
@@ -24,8 +29,7 @@ export default function PublishAdScreen({ onClose, currentGuildId }: Props) {
         Animated.timing(slide, { toValue: SCREEN_H, duration: 200, useNativeDriver: true }).start(onClose);
     };
 
-    const myServer = currentGuildId ? getServerByGuildId(currentGuildId) : null;
-    const targets = getServers().filter((s) => s.id !== myServer?.id);
+    const servers = getServers();
 
     return (
         <View style={rst.backdrop} pointerEvents="box-none">
@@ -37,17 +41,15 @@ export default function PublishAdScreen({ onClose, currentGuildId }: Props) {
                     <Pressable onPress={close}><Text style={rst.closeX}>✕</Text></Pressable>
                 </View>
 
-                {!myServer ? (
-                    <Text style={rst.empty}>
-                        Ten serwer nie jest zarejestrowany w "Zarządzaj serwerami" — dodaj go najpierw, żeby mieć swoją treść reklamy do wysłania.
-                    </Text>
+                {!messageContent ? (
+                    <Text style={rst.empty}>Ta wiadomość nie ma treści do opublikowania.</Text>
                 ) : (
                     <FlatList
                         style={rst.scroll}
                         contentContainerStyle={rst.scrollContent}
-                        data={targets}
+                        data={servers}
                         keyExtractor={(s) => s.id}
-                        ListEmptyComponent={<Text style={rst.empty}>Brak innych zarejestrowanych serwerów do wysłania.</Text>}
+                        ListEmptyComponent={<Text style={rst.empty}>Brak zarejestrowanych serwerów — dodaj je w "Zarządzaj serwerami".</Text>}
                         renderItem={({ item }) => (
                             <View style={rst.row}>
                                 <GuildIcon guildId={item.guildId} size={36} />
@@ -62,9 +64,9 @@ export default function PublishAdScreen({ onClose, currentGuildId }: Props) {
                                         }
                                         openChannelSilently(item.channelId);
                                         setTimeout(() => {
-                                            const ok = sendMessageToChannel(item.channelId!, myServer.adText);
+                                            const ok = sendMessageToChannel(item.channelId!, messageContent);
                                             showToast(
-                                                ok ? `Wysłano reklamę do "${item.name}"` : "Nie udało się wysłać",
+                                                ok ? `Opublikowano na "${item.name}"` : "Nie udało się wysłać",
                                                 getAssetIDByName(ok ? "ic_information_24px" : "ic_warning_24px"),
                                             );
                                             if (ok) close();

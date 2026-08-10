@@ -280,14 +280,31 @@ const MessageActions = findByProps("sendMessage");
 
 export function sendMessageToChannel(channelId: string, content: string): boolean {
     try {
-        if (MessageActions?.sendMessage) {
+        log("sendMessageToChannel: MessageActions keys =", JSON.stringify(Object.keys(MessageActions ?? {})));
+    } catch { /* ignore */ }
+
+    if (MessageActions?.sendMessage) {
+        try {
             MessageActions.sendMessage(channelId, { content });
-            log("sendMessageToChannel: wysłano do", channelId);
+            log("sendMessageToChannel: sendMessage(channelId,{content}) wywołane dla", channelId);
             return true;
+        } catch (e) {
+            warn("sendMessageToChannel: {content} rzuciło błąd, próbuję pełny obiekt wiadomości:", e);
+            try {
+                MessageActions.sendMessage(channelId, {
+                    content,
+                    tts: false,
+                    invalidEmojis: [],
+                    validNonShortcutEmojis: [],
+                });
+                log("sendMessageToChannel: sendMessage() z pełnym obiektem zadziałało dla", channelId);
+                return true;
+            } catch (e2) {
+                warn("sendMessageToChannel: pełny obiekt też rzucił błąd:", e2);
+            }
         }
+    } else {
         warn("sendMessageToChannel: brak sendMessage w module");
-    } catch (e) {
-        warn("sendMessageToChannel error:", e);
     }
     return false;
 }
