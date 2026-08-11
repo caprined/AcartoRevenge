@@ -276,68 +276,6 @@ export function addFriend(userId: string): boolean {
     return false;
 }
 
-const MessageActions = findByProps("sendMessage");
-
-const Clipboard = findByProps("setString", "getString");
-
-export function copyToClipboard(text: string): boolean {
-    try {
-        if (Clipboard?.setString) {
-            Clipboard.setString(text);
-            log("copyToClipboard: skopiowano do schowka");
-            return true;
-        }
-        warn("copyToClipboard: brak modułu Clipboard (setString)");
-    } catch (e) {
-        warn("copyToClipboard error:", e);
-    }
-    return false;
-}
-
-export function sendMessageToChannel(channelId: string, content: string): boolean {
-    try {
-        log("sendMessageToChannel: MessageActions keys =", JSON.stringify(Object.keys(MessageActions ?? {})));
-    } catch { /* ignore */ }
-
-    if (MessageActions?.sendMessage) {
-        try {
-            MessageActions.sendMessage(channelId, { content });
-            log("sendMessageToChannel: sendMessage(channelId,{content}) wywołane dla", channelId);
-            return true;
-        } catch (e) {
-            warn("sendMessageToChannel: {content} rzuciło błąd, próbuję pełny obiekt wiadomości:", e);
-            try {
-                MessageActions.sendMessage(channelId, {
-                    content,
-                    tts: false,
-                    invalidEmojis: [],
-                    validNonShortcutEmojis: [],
-                });
-                log("sendMessageToChannel: sendMessage() z pełnym obiektem zadziałało dla", channelId);
-                return true;
-            } catch (e2) {
-                warn("sendMessageToChannel: pełny obiekt też rzucił błąd:", e2);
-            }
-        }
-    } else {
-        warn("sendMessageToChannel: brak sendMessage w module");
-    }
-    return false;
-}
-
-/**
- * Przełącza kontekst na kanał (potrzebne żeby sendMessage trafił we
- * właściwe miejsce) bez zamykania naszego Modala — Modal i tak jest
- * zawsze na wierzchu niezależnie od nawigacji pod spodem.
- */
-export function openChannelSilently(channelId: string) {
-    try {
-        PrivateChannelActions?.openChannel?.(channelId);
-    } catch (e) {
-        warn("openChannelSilently error:", e);
-    }
-}
-
 const MENTION_RE = /<@!?(\d+)>/g;
 
 export function extractMentionedUserIds(content: string): string[] {
