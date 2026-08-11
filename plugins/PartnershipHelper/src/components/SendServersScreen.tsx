@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, FlatList, Pressable, Animated, StyleSheet, Dimensions } from "react-native";
 import { getServers } from "../utils/servers";
-import { sendMessageToChannel } from "../utils/discord";
+import { copyToClipboard } from "../utils/discord";
 import { showToast } from "@vendetta/ui/toasts";
 import { getAssetIDByName } from "@vendetta/ui/assets";
 import GuildIcon from "./GuildIcon";
@@ -53,12 +53,13 @@ export default function SendServersScreen({ onClose, targetChannelId }: Props) {
                                         showToast("Ten serwer nie ma ustawionej treści reklamy", getAssetIDByName("ic_warning_24px"));
                                         return;
                                     }
-                                    const ok = sendMessageToChannel(targetChannelId, item.adText);
-                                    showToast(
-                                        ok ? `Wysłano reklamę "${item.name}"` : "Nie udało się wysłać",
-                                        getAssetIDByName(ok ? "ic_information_24px" : "ic_warning_24px"),
-                                    );
-                                    if (ok) close();
+                                    const ok = copyToClipboard(item.adText);
+                                    if (ok) {
+                                        showToast(`Skopiowano reklamę "${item.name}" — wklej i wyślij`, getAssetIDByName("ic_information_24px"));
+                                        close();
+                                    } else {
+                                        showToast("Nie udało się skopiować do schowka", getAssetIDByName("ic_warning_24px"));
+                                    }
                                 }}
                             >
                                 <Text style={rst.sendBtnText}>Wyślij</Text>

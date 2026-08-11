@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, FlatList, Pressable, Animated, StyleSheet, Dimensions } from "react-native";
 import { getServers } from "../utils/servers";
-import { sendMessageToChannel, openChannelSilently } from "../utils/discord";
+import { copyToClipboard, openChannelSilently } from "../utils/discord";
 import { showToast } from "@vendetta/ui/toasts";
 import { getAssetIDByName } from "@vendetta/ui/assets";
 import GuildIcon from "./GuildIcon";
@@ -63,14 +63,13 @@ export default function PublishAdScreen({ onClose, messageContent }: Props) {
                                             return;
                                         }
                                         openChannelSilently(item.channelId);
-                                        setTimeout(() => {
-                                            const ok = sendMessageToChannel(item.channelId!, messageContent);
-                                            showToast(
-                                                ok ? `Opublikowano na "${item.name}"` : "Nie udało się wysłać",
-                                                getAssetIDByName(ok ? "ic_information_24px" : "ic_warning_24px"),
-                                            );
-                                            if (ok) close();
-                                        }, 400);
+                                        const ok = copyToClipboard(messageContent);
+                                        if (ok) {
+                                            showToast(`Otwarto "${item.name}", tekst skopiowany — wklej i wyślij`, getAssetIDByName("ic_information_24px"));
+                                            close();
+                                        } else {
+                                            showToast("Nie udało się skopiować do schowka", getAssetIDByName("ic_warning_24px"));
+                                        }
                                     }}
                                 >
                                     <Text style={rst.sendBtnText}>Wyślij</Text>

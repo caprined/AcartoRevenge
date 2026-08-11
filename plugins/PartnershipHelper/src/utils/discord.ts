@@ -278,6 +278,22 @@ export function addFriend(userId: string): boolean {
 
 const MessageActions = findByProps("sendMessage");
 
+const Clipboard = findByProps("setString", "getString");
+
+export function copyToClipboard(text: string): boolean {
+    try {
+        if (Clipboard?.setString) {
+            Clipboard.setString(text);
+            log("copyToClipboard: skopiowano do schowka");
+            return true;
+        }
+        warn("copyToClipboard: brak modułu Clipboard (setString)");
+    } catch (e) {
+        warn("copyToClipboard error:", e);
+    }
+    return false;
+}
+
 export function sendMessageToChannel(channelId: string, content: string): boolean {
     try {
         log("sendMessageToChannel: MessageActions keys =", JSON.stringify(Object.keys(MessageActions ?? {})));
