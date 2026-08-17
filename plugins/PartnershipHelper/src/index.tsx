@@ -1,6 +1,6 @@
 import { patchMessageMenu } from "./patches/messageMenu";
 import { stopRecording } from "./utils/recorder";
-import { getReviews } from "./utils/store";
+import { getReviews, cleanupOldReviews } from "./utils/store";
 import { showToast } from "@vendetta/ui/toasts";
 import { getAssetIDByName } from "@vendetta/ui/assets";
 import { log, error as logError } from "./utils/logger";
@@ -11,6 +11,13 @@ const cleanups: (() => void)[] = [];
 export default {
     onLoad() {
         log("onLoad start");
+
+        try {
+            const removed = cleanupOldReviews();
+            if (removed > 0) log(`cleanupOldReviews: usunięto ${removed} wpisów starszych niż 7 dni`);
+        } catch (e) {
+            logError("cleanupOldReviews error:", e);
+        }
 
         let menuOk = false;
         try {

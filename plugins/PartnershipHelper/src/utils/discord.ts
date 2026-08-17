@@ -300,6 +300,22 @@ export function getGuildNameForChannel(channelId: string): { guildId: string; gu
     }
 }
 
+export const PresenceStore = findByStoreName("PresenceStore");
+
+export function getUserStatus(userId: string): string {
+    try {
+        return PresenceStore?.getStatus?.(userId) ?? "offline";
+    } catch {
+        return "offline";
+    }
+}
+
+/** true jeśli online/dnd/idle — cokolwiek poza offline */
+export function isUserActive(userId: string): boolean {
+    const status = getUserStatus(userId);
+    return status === "online" || status === "dnd" || status === "idle";
+}
+
 export function getDisplayName(userId: string): { displayName: string; username: string; found: boolean } {
     try {
         const user = UserStore?.getUser?.(userId);

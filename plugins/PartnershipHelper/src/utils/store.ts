@@ -35,6 +35,22 @@ export function getReviews(): ReviewEntry[] {
     return Object.values(reviews).sort((a, b) => b.timestamp - a.timestamp);
 }
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Usuwa wpisy starsze niż 7 dni (licząc od czasu WYSŁANIA reklamy). */
+export function cleanupOldReviews(): number {
+    const reviews = ensure();
+    const now = Date.now();
+    let removed = 0;
+    for (const key of Object.keys(reviews)) {
+        if (now - reviews[key].timestamp > SEVEN_DAYS_MS) {
+            delete reviews[key];
+            removed++;
+        }
+    }
+    return removed;
+}
+
 export function hasReview(userId: string): boolean {
     return !!ensure()[userId];
 }

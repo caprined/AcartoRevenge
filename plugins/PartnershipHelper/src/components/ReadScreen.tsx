@@ -11,8 +11,10 @@ import {
     isFriend,
     addFriend,
     hasExistingConversation,
+    isUserActive,
     UserStore,
     RelationshipStore,
+    PresenceStore,
 } from "../utils/discord";
 import { formatRelative } from "../utils/time";
 import { log } from "../utils/logger";
@@ -45,6 +47,12 @@ function Row({ entry, onRemove, onNavigate, onNavigateAway }: { entry: ReviewEnt
     ) ?? isFriend(entry.userId);
 
     const alreadyTalked = React.useMemo(() => hasExistingConversation(entry.userId), [entry.userId]);
+
+    const active = Flux?.useStateFromStores?.(
+        [PresenceStore],
+        () => isUserActive(entry.userId),
+        [entry.userId],
+    ) ?? isUserActive(entry.userId);
 
     const handleSend = () => {
         // Wysłanie wiadomości = faktyczna nawigacja gdzie indziej, więc TO
@@ -80,7 +88,7 @@ function Row({ entry, onRemove, onNavigate, onNavigateAway }: { entry: ReviewEnt
         <View style={rst.row}>
             <View style={rst.rowTop}>
                 <View style={rst.namesCol}>
-                    <Text style={rst.displayName} numberOfLines={1}>{displayName}</Text>
+                    <Text style={[rst.displayName, active && rst.displayNameActive]} numberOfLines={1}>{displayName}</Text>
                     <Text style={rst.username} numberOfLines={1}>@{username}</Text>
                     <Text style={rst.guildName} numberOfLines={1}>{entry.guildName}</Text>
                 </View>
@@ -108,6 +116,7 @@ function Row({ entry, onRemove, onNavigate, onNavigateAway }: { entry: ReviewEnt
 
 export default function ReadScreen({ onClose, onNavigateAway }: Props) {
     const [, forceRender] = React.useReducer((x) => x + 1, 0);
+    const [onlyActive, setOnlyActive] = React.useState(false);
     const slide = React.useRef(new Animated.Value(SCREEN_H)).current;
 
     React.useEffect(() => {
@@ -120,7 +129,8 @@ export default function ReadScreen({ onClose, onNavigateAway }: Props) {
         Animated.timing(slide, { toValue: SCREEN_H, duration: 200, useNativeDriver: true }).start(onClose);
     };
 
-    const entries = getReviews();
+    const allEntries = getReviews();
+    const entries = onlyActive ? allEntries.filter((e) => isUserActive(e.userId)) : allEntries;
 
     return (
         <View style={rst.backdrop} pointerEvents="box-none">
@@ -131,9 +141,19 @@ export default function ReadScreen({ onClose, onNavigateAway }: Props) {
                     <Text style={rst.title}>Partnership Helper · {entries.length}</Text>
                     <Pressable onPress={close}><Text style={rst.closeX}>✕</Text></Pressable>
                 </View>
+                <Pressable
+                    style={[rst.filterBtn, onlyActive && rst.filterBtnActive]}
+                    onPress={() => setOnlyActive((v) => !v)}
+                >
+                    <Text style={[rst.filterBtnText, onlyActive && rst.filterBtnTextActive]}>
+                        {onlyActive ? "✓ Tylko online" : "Tylko online"}
+                    </Text>
+                </Pressable>
                 {entries.length === 0 ? (
                     <Text style={rst.empty}>
-                        Brak zebranych wzmianek. Uruchom "Stwórz review" i przescrolluj kanał z reklamami.
+                        {onlyActive
+                            ? "Brak userów online wśród zebranych wzmianek."
+                            : 'Brak zebranych wzmianek. Uruchom "Stwórz review" i przescrolluj kanał z reklamami.'}
                     </Text>
                 ) : (
                     <FlatList
@@ -193,6 +213,13 @@ const rst = StyleSheet.create({
     },
     title: { color: "#fff", fontSize: 16, fontWeight: "700" },
     closeX: { color: "#b5bac1", fontSize: 18, padding: 4 },
+    filterBtn: {
+        marginHorizontal: 12, marginBottom: 8,
+        backgroundColor: "#2b2d31", borderRadius: 8, paddingVertical: 8, alignItems: "center",
+    },
+    filterBtnActive: { backgroundColor: "#2d9d54" },
+    filterBtnText: { color: "#b5bac1", fontSize: 12, fontWeight: "700" },
+    filterBtnTextActive: { color: "#fff" },
     scroll: { paddingHorizontal: 12 },
     scrollContent: { paddingBottom: 12 },
     empty: { color: "#949ba4", fontSize: 13, textAlign: "center", padding: 24 },
@@ -205,6 +232,7 @@ const rst = StyleSheet.create({
     rowTop: { flexDirection: "row", justifyContent: "space-between" },
     namesCol: { flex: 1, paddingRight: 8 },
     displayName: { color: "#fff", fontSize: 15, fontWeight: "700" },
+    displayNameActive: { color: "#3ba55c" },
     username: { color: "#949ba4", fontSize: 12, marginTop: 1 },
     guildName: { color: "#b5bac1", fontSize: 12, marginTop: 4 },
     timestamp: { color: "#949ba4", fontSize: 11 },
