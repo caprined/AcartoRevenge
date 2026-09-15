@@ -19,13 +19,13 @@ let persistentToastInterval: ReturnType<typeof setInterval> | null = null;
 
 function startPersistentOnToast() {
     stopPersistentOnToast();
-    showToast("Review: ON", getAssetIDByName("ic_information_24px"));
+    showToast(`Parsed: ${getSessionAddedCount()}`, getAssetIDByName("ic_information_24px"));
     persistentToastInterval = setInterval(() => {
         if (!isRecording()) {
             stopPersistentOnToast();
             return;
         }
-        showToast("Review: ON", getAssetIDByName("ic_information_24px"));
+        showToast(`Parsed: ${getSessionAddedCount()}`, getAssetIDByName("ic_information_24px"));
     }, 4000);
 }
 
