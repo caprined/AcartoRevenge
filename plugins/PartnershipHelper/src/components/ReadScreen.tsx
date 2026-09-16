@@ -1,7 +1,8 @@
 import React from "react";
 import { View, Text, FlatList, Pressable, Animated, StyleSheet, Dimensions } from "react-native";
 import { findByProps, findByStoreName } from "@vendetta/metro";
-import { getReviews, removeReview, ReviewEntry } from "../utils/store";
+import { getReviews, removeReview, subscribeStore, ReviewEntry } from "../utils/store";
+import { openReadScreen } from "../utils/bus";
 import {
     getDisplayName,
     openDM,
@@ -61,7 +62,11 @@ function Row({ entry, onRemove, onNavigate, onNavigateAway }: { entry: ReviewEnt
         setTimeout(() => {
             openDM(entry.userId, (channelId) => {
                 log("Row: czekam na wysłanie wiadomości zanim usunę wpis", entry.userId);
-                watchForSentMessage(channelId, () => removeReview(entry.userId));
+                watchForSentMessage(channelId, () => {
+                    removeReview(entry.userId);
+                    log("Row: wiadomość wysłana, otwieram z powrotem listę");
+                    openReadScreen();
+                });
             });
             try { onNavigateAway?.(); } catch { /* ignore */ }
         }, 300);
@@ -122,7 +127,11 @@ export default function ReadScreen({ onClose, onNavigateAway }: Props) {
     React.useEffect(() => {
         Animated.spring(slide, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
         const interval = setInterval(() => forceRender(), 60_000);
-        return () => clearInterval(interval);
+        const unsub = subscribeStore(() => forceRender());
+        return () => {
+            clearInterval(interval);
+            unsub();
+        };
     }, []);
 
     const close = () => {
