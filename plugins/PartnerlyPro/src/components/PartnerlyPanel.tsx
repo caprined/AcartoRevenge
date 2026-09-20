@@ -35,8 +35,8 @@ export default function PartnerlyPanel({ onClose, onNavigateAway }: { onClose: (
     setTimeout(() => {
       openDM(entry.userId, (channelId) => {
         const message = config.defaultMessage;
-
         const sent = sendMessageToChannel(channelId, message);
+
         if (config.autoSend && !sent) {
           try {
             globalThis?.navigator?.clipboard?.writeText?.(message);
@@ -54,15 +54,25 @@ export default function PartnerlyPanel({ onClose, onNavigateAway }: { onClose: (
 
   return (
     <View style={styles.root}>
-      <Text style={styles.heading}>PartnerlyPro</Text>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.eyebrow}>PartnerlyPro</Text>
+          <Text style={styles.heading}>Lista użytkowników</Text>
+        </View>
+        <Pressable style={styles.closeButton} onPress={onClose}>
+          <Text style={styles.closeText}>✕</Text>
+        </Pressable>
+      </View>
 
-      <TextInput
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Szukaj po nazwie, userId..."
-        placeholderTextColor="#8c93a3"
-        style={styles.search}
-      />
+      <View style={styles.toolbar}>
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Szukaj użytkownika…"
+          placeholderTextColor="#8b93a7"
+          style={styles.search}
+        />
+      </View>
 
       <View style={styles.sortRow}>
         {(["newest", "name", "online"] as const).map((mode) => (
@@ -80,7 +90,10 @@ export default function PartnerlyPanel({ onClose, onNavigateAway }: { onClose: (
 
       <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
         {visible.length === 0 ? (
-          <Text style={styles.empty}>Brak wpisów. Uruchom Load New i zrób scrapowanie.</Text>
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>Brak wpisów</Text>
+            <Text style={styles.emptyText}>Uruchom Load New i zrób scrapowanie tego kanału.</Text>
+          </View>
         ) : (
           visible.map((entry) => {
             const profile = getDisplayName(entry.userId);
@@ -103,6 +116,10 @@ export default function PartnerlyPanel({ onClose, onNavigateAway }: { onClose: (
                     <Text style={styles.displayName} numberOfLines={1}>{profile.displayName}</Text>
                     <Text style={styles.username}>@{profile.username}</Text>
                     <Text style={styles.serverName} numberOfLines={1}>{entry.guildName}</Text>
+                  </View>
+
+                  <View style={[styles.badge, friend && styles.badgeFriend]}>
+                    <Text style={styles.badgeText}>{friend ? "Friend" : "User"}</Text>
                   </View>
                 </View>
 
@@ -132,67 +149,221 @@ export default function PartnerlyPanel({ onClose, onNavigateAway }: { onClose: (
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, paddingHorizontal: 12, paddingTop: 6 },
-  heading: { color: "#fff", fontSize: 18, fontWeight: "800", marginBottom: 10 },
-  search: {
-    backgroundColor: "#1b1f25",
+  root: {
+    flex: 1,
+    backgroundColor: "#0b1020",
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 12,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  eyebrow: {
+    color: "#8ea0ff",
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  heading: {
+    color: "#f4f7fb",
+    fontSize: 24,
+    fontWeight: "800",
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    backgroundColor: "#1b2331",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  closeText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  toolbar: {
+    marginBottom: 12,
+  },
+  search: {
+    backgroundColor: "#131b2b",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     color: "#fff",
     borderWidth: 1,
-    borderColor: "#2c3139",
-    marginBottom: 10,
+    borderColor: "rgba(148, 163, 184, 0.22)",
+    fontSize: 14,
   },
-  sortRow: { flexDirection: "row", gap: 8, marginBottom: 10 },
-  sortChip: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 999, backgroundColor: "#1d2228" },
-  sortChipActive: { backgroundColor: "#5865f2" },
-  sortChipText: { color: "#dfe5f2", fontSize: 11, fontWeight: "700" },
-  sortChipTextActive: { color: "#fff" },
-  list: { flex: 1 },
-  listContent: { paddingBottom: 20 },
-  empty: { color: "#9aa4b2", textAlign: "center", paddingTop: 20 },
+  sortRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 12,
+  },
+  sortChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "#121a2d",
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.15)",
+  },
+  sortChipActive: {
+    backgroundColor: "#5865f2",
+    borderColor: "rgba(88,101,242,0.8)",
+  },
+  sortChipText: {
+    color: "#dfe6f5",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  sortChipTextActive: {
+    color: "#fff",
+  },
+  list: {
+    flex: 1,
+  },
+  listContent: {
+    paddingBottom: 18,
+  },
+  emptyCard: {
+    backgroundColor: "#101827",
+    padding: 18,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.15)",
+    alignItems: "center",
+  },
+  emptyTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 6,
+  },
+  emptyText: {
+    color: "#94a3b8",
+    textAlign: "center",
+    fontSize: 13,
+    lineHeight: 18,
+  },
   card: {
-    backgroundColor: "#181b20",
-    borderRadius: 16,
-    padding: 12,
+    backgroundColor: "#101827",
+    borderRadius: 18,
+    padding: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#2a2f36",
+    borderColor: "rgba(148,163,184,0.14)",
   },
-  cardTop: { flexDirection: "row", alignItems: "center" },
+  cardTop: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   avatarWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: "#2a3038",
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: "linear-gradient(135deg, #5865f2, #7c6cf6)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
   },
-  avatarTag: { color: "#fff", fontSize: 10, fontWeight: "700" },
-  avatarFallback: { color: "#fff", fontSize: 18, fontWeight: "800" },
-  meta: { flex: 1 },
-  displayName: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  username: { color: "#8e97a5", fontSize: 12 },
-  serverName: { color: "#b8beca", fontSize: 12, marginTop: 2 },
-  link: { color: "#7d8798", fontSize: 11, marginTop: 10 },
-  actions: { flexDirection: "row", marginTop: 12, gap: 8 },
+  avatarTag: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  avatarFallback: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  meta: {
+    flex: 1,
+  },
+  displayName: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "800",
+  },
+  username: {
+    color: "#9aa5b5",
+    fontSize: 12,
+    marginTop: 2,
+  },
+  serverName: {
+    color: "#cad2df",
+    fontSize: 12,
+    marginTop: 2,
+  },
+  badge: {
+    backgroundColor: "#1d2a39",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.15)",
+    marginLeft: 8,
+  },
+  badgeFriend: {
+    backgroundColor: "#143c2f",
+    borderColor: "rgba(52,211,153,0.35)",
+  },
+  badgeText: {
+    color: "#dfe8f5",
+    fontSize: 10,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+  link: {
+    color: "#7f8aa1",
+    fontSize: 11,
+    marginTop: 12,
+    paddingHorizontal: 2,
+  },
+  actions: {
+    flexDirection: "row",
+    marginTop: 12,
+    gap: 8,
+  },
   primaryButton: {
     flex: 1,
     backgroundColor: "#5865f2",
-    borderRadius: 10,
-    paddingVertical: 10,
+    borderRadius: 12,
+    paddingVertical: 11,
     alignItems: "center",
+    justifyContent: "center",
   },
-  primaryButtonFriend: { backgroundColor: "#2d9d54" },
-  primaryButtonText: { color: "#fff", fontWeight: "700" },
+  primaryButtonFriend: {
+    backgroundColor: "#2a9d6f",
+  },
+  primaryButtonText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 13,
+  },
   secondaryButton: {
-    backgroundColor: "#2b3037",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    backgroundColor: "#1b2433",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
     alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
   },
-  secondaryButtonText: { color: "#ff9a9a", fontWeight: "700" },
+  secondaryButtonText: {
+    color: "#ff9e9e",
+    fontWeight: "800",
+    fontSize: 13,
+  },
 });

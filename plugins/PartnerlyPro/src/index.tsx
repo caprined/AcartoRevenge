@@ -1,6 +1,6 @@
 import React from "react";
-import { View, Modal, StyleSheet } from "react-native";
-import { findByProps } from "@vendetta/metro";
+import { View, Modal, StyleSheet, Pressable, Text } from "react-native";
+import { findByName, findByProps } from "@vendetta/metro";
 import { before, after } from "@vendetta/patcher";
 import { Forms } from "@vendetta/ui/components";
 import { showToast } from "@vendetta/ui/toasts";
@@ -15,6 +15,7 @@ const LazyActionSheet = findByProps("openLazy", "hideActionSheet");
 const ActionSheetRow = findByProps("ActionSheetRow")?.ActionSheetRow ?? Forms.FormRow;
 const cleanups: (() => void)[] = [];
 const patchedInstances = new Set<any>();
+const patchedRootComponents = new Set<any>();
 let persistentToastInterval: ReturnType<typeof setInterval> | null = null;
 
 function stopLiveToast() {
@@ -36,10 +37,94 @@ function startLiveToast() {
   }, 3000);
 }
 
+function PartnerlyDock() {
+  const [panelOpen, setPanelOpen] = React.useState(false);
+  const config = getConfig();
+
+  const copyAd = () => {
+    const text = config.defaultMessage || "Brak tekstu reklamowego";
+    try {
+      // @ts-ignore
+      navigator.clipboard.writeText(text);
+      showToast("Skopiowano AD do schowka", getAssetIDByName("ic_content_copy_24px"));
+    } catch {
+      showToast("Nie udało się skopiować AD", getAssetIDByName("ic_warning_24px"));
+    }
+  };
+
+  const toggleLoadNew = () => {
+    if (isRecording()) {
+      stopRecording();
+      stopLiveToast();
+      showToast("Load New zatrzymane", getAssetIDByName("ic_stop_24px"));
+      return;
+    }
+
+    startRecording();
+    startLiveToast();
+  };
+
+  return (
+    <>
+      <View style={styles.dockWrap} pointerEvents="box-none">
+        <View style={styles.dock} pointerEvents="box-none">
+          <Pressable style={styles.dockButton} onPress={copyAd}>
+            <Text style={styles.dockText}>AD</Text>
+          </Pressable>
+          <Pressable style={styles.dockButton} onPress={() => setPanelOpen(true)}>
+            <Text style={styles.dockText}>P</Text>
+          </Pressable>
+          <Pressable style={styles.dockButton} onPress={toggleLoadNew}>
+            <Text style={styles.dockText}>N</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <Modal visible={panelOpen} transparent animationType="fade" onRequestClose={() => setPanelOpen(false)}>
+        <View style={styles.fullscreenBackdrop}>
+          <View style={styles.fullscreenSheet}>
+            <PartnerlyPanel onClose={() => setPanelOpen(false)} />
+          </View>
+        </View>
+      </Modal>
+    </>
+  );
+}
+
+function patchRootOverlay() {
+  const rootNames = ["AppView", "RootView", "MainTabsView", "AppContent", "Chrome"];
+
+  for (const rootName of rootNames) {
+    try {
+      const mod = findByName(rootName);
+      if (!mod?.default || patchedRootComponents.has(mod.default)) continue;
+
+      const orig = mod.default;
+      mod.default = function PartnerlyRootWrapper(props: any) {
+        return (
+          <>
+            {React.createElement(orig, props)}
+            <PartnerlyDock />
+          </>
+        );
+      };
+      mod.default.displayName = `${rootName}PartnerlyPro`;
+      patchedRootComponents.add(orig);
+      cleanups.push(() => {
+        mod.default = orig;
+        patchedRootComponents.delete(orig);
+      });
+    } catch (e) {
+      warn("root patch failed for", rootName, e);
+    }
+  }
+}
+
 export default {
   onLoad() {
     log("PartnerlyPro onLoad");
     try {
+      patchRootOverlay();
       const ok = patchMessageMenu(cleanups);
       if (!ok) {
         showToast("PartnerlyPro: menu patch failed", getAssetIDByName("ic_warning_24px"));
@@ -178,5 +263,54 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 18,
     maxHeight: "82%",
     minHeight: "48%",
+  },
+  dockWrap: {
+    position: "absolute",
+    right: 14,
+    bottom: 26,
+    zIndex: 9999,
+    pointerEvents: "box-none",
+  },
+  dock: {
+    backgroundColor: "rgba(16, 18, 22, 0.92)",
+    borderWidth: 1,
+    borderColor: "rgba(138, 142, 166, 0.35)",
+    borderRadius: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  dockButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    backgroundColor: "#5865f2",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+  },
+  dockText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  fullscreenBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(7, 9, 13, 0.68)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fullscreenSheet: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#0d1117",
   },
 });
