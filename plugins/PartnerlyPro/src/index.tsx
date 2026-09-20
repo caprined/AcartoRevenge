@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Modal, StyleSheet, Pressable, Text } from "react-native";
-import { findByName, findByProps } from "@vendetta/metro";
+import { find, findByName, findByProps } from "@vendetta/metro";
 import { before, after } from "@vendetta/patcher";
 import { Forms } from "@vendetta/ui/components";
 import { showToast } from "@vendetta/ui/toasts";
@@ -92,31 +92,55 @@ function PartnerlyDock() {
 }
 
 function patchRootOverlay() {
-  const rootNames = ["AppView", "RootView", "MainTabsView", "AppContent", "Chrome"];
+  const rootNames = ["AppView", "RootView", "MainTabsView", "AppContent", "Chrome", "GuildsBar"];
+  const seen = new Set<any>();
+
+  const patchModule = (mod: any, label: string) => {
+    if (!mod?.default || seen.has(mod.default)) return;
+    seen.add(mod.default);
+
+    const orig = mod.default;
+    mod.default = function PartnerlyRootWrapper(props: any) {
+      return (
+        <>
+          {React.createElement(orig, props)}
+          <PartnerlyDock />
+        </>
+      );
+    };
+    mod.default.displayName = `${label}PartnerlyPro`;
+
+    patchedRootComponents.add(orig);
+    cleanups.push(() => {
+      mod.default = orig;
+      patchedRootComponents.delete(orig);
+    });
+  };
 
   for (const rootName of rootNames) {
     try {
       const mod = findByName(rootName);
-      if (!mod?.default || patchedRootComponents.has(mod.default)) continue;
-
-      const orig = mod.default;
-      mod.default = function PartnerlyRootWrapper(props: any) {
-        return (
-          <>
-            {React.createElement(orig, props)}
-            <PartnerlyDock />
-          </>
-        );
-      };
-      mod.default.displayName = `${rootName}PartnerlyPro`;
-      patchedRootComponents.add(orig);
-      cleanups.push(() => {
-        mod.default = orig;
-        patchedRootComponents.delete(orig);
-      });
+      if (mod) patchModule(mod, rootName);
     } catch (e) {
       warn("root patch failed for", rootName, e);
     }
+  }
+
+  try {
+    const fallback = find((m: any) => {
+      if (!m?.default) return false;
+      const name = m.default.displayName || m.default.name || m.default.type?.name || "";
+      return rootNames.some((needle) => name.includes(needle));
+    });
+
+    if (fallback) patchModule(fallback, "FallbackRoot");
+  } catch (e) {
+    warn("root patch fallback failed:", e);
+  }
+
+  const containerProps = findByProps("AppContainer") ?? findByProps("RootNavigationContainer");
+  if (containerProps && containerProps.default) {
+    patchModule(containerProps, "AppContainer");
   }
 }
 
