@@ -1,0 +1,14 @@
+{
+  "name": "PartnerlyPro",
+  "description": "Nowoczesny panel do scrapowania wzmiankowanych użytkowników, szybkiego copy-ad i automatycznego DM-u.",
+  "authors": [
+    {
+      "name": "Acarto",
+      "id": "TWOJE_DISCORD_ID_TUTAJ"
+    }
+  ],
+  "main": "src/index.tsx",
+  "vendetta": {
+    "icon": "ic_message_24px"
+  }
+}
