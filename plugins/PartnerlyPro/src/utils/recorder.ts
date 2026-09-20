@@ -93,6 +93,10 @@ export function isRecording() {
   return active;
 }
 
+export function resetSessionCount() {
+  sessionAddedCount = 0;
+}
+
 export function getSessionAddedCount() {
   return sessionAddedCount;
 }

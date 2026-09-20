@@ -140,6 +140,51 @@ export function watchForSentMessage(channelId: string, onSent: () => void) {
   }, 30 * 60 * 1000);
 }
 
+export function sendMessageToChannel(channelId: string, content: string): boolean {
+  if (!channelId || !content) return false;
+
+  const attempts = [
+    findByProps("sendMessage"),
+    findByProps("createMessage"),
+    findByProps("sendMessageToChannel"),
+    findByProps("sendMessageToUser"),
+    findByProps("sendMessage", "editMessage"),
+  ].filter(Boolean);
+
+  for (const target of attempts) {
+    for (const key of ["sendMessage", "sendMessageToChannel", "sendMessageToUser", "createMessage"]) {
+      const fn = target?.[key];
+      if (typeof fn !== "function") continue;
+
+      try {
+        const result = fn.call(target, { channelId, content })
+          ?? fn.call(target, channelId, content)
+          ?? fn.call(target, { channel_id: channelId, content });
+
+        if (result && typeof result.then === "function") {
+          result.catch(() => undefined);
+          return true;
+        }
+        if (result !== undefined) return true;
+      } catch {
+        // fallback to next variant
+      }
+    }
+  }
+
+  const MessageActions = findByProps("sendMessage");
+  if (MessageActions && typeof MessageActions.sendMessage === "function") {
+    try {
+      MessageActions.sendMessage({ channelId, content });
+      return true;
+    } catch {
+      // ignore
+    }
+  }
+
+  return false;
+}
+
 export function isFriend(userId: string): boolean {
   try {
     if (RelationshipStore?.isFriend) return !!RelationshipStore.isFriend(userId);

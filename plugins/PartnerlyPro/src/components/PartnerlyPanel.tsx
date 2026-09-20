@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, Pressable, ScrollView, StyleSheet, TextInput } from "react-native";
 import { getAssetIDByName } from "@vendetta/ui/assets";
 import { showToast } from "@vendetta/ui/toasts";
-import { openDM, watchForSentMessage, getDisplayName, getAvatarUri, isFriend, fetchUserIfMissing } from "../utils/discord";
+import { openDM, watchForSentMessage, getDisplayName, getAvatarUri, isFriend, fetchUserIfMissing, sendMessageToChannel } from "../utils/discord";
 import { getEntries, removeEntry, getConfig } from "../utils/store";
 
 export default function PartnerlyPanel({ onClose, onNavigateAway }: { onClose: () => void; onNavigateAway?: () => void }) {
@@ -35,12 +35,15 @@ export default function PartnerlyPanel({ onClose, onNavigateAway }: { onClose: (
     setTimeout(() => {
       openDM(entry.userId, (channelId) => {
         const message = config.defaultMessage;
-        if (config.autoSend) {
+
+        const sent = sendMessageToChannel(channelId, message);
+        if (config.autoSend && !sent) {
           try {
             globalThis?.navigator?.clipboard?.writeText?.(message);
           } catch { }
         }
-        if (config.autoOpenDM || config.autoSend) {
+
+        if (config.autoOpenDM || config.autoSend || sent) {
           watchForSentMessage(channelId, () => {
             showToast("Wysłano wiadomość do użytkownika", getAssetIDByName("ic_check_24px"));
           });
